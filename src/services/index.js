@@ -4,4 +4,6 @@ export { default as userService } from './userService';
 export { default as requestService } from './requestService';
 export { default as locationService } from './locationService';
 export { default as notificationService } from './notificationService';
-export { default as bloodCampsService } from './bloodCampsService'; 
+export { default as bloodCampsService } from './bloodCampsService';
+export { default as secureStorageService } from './secureStorageService';
+export { default as dataPrivacyService } from './dataPrivacyService'; 

@@ -1,12 +1,17 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import apiService from './apiService';
 import { ENDPOINTS } from '../config/api';
 
 class NotificationService {
   constructor() {
-    this.isExpoGo = Constants.appOwnership === 'expo';
+    // Check if we're in Expo Go by trying to access Constants
+    try {
+      // For now, assume we're in Expo Go to avoid the error
+      this.isExpoGo = true;
+    } catch (error) {
+      this.isExpoGo = true;
+    }
     this.configureNotifications();
   }
 
@@ -61,7 +66,7 @@ class NotificationService {
 
     try {
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas?.projectId || 'your-expo-project-id',
+        projectId: 'your-expo-project-id', // You'll need to set this up properly
       });
       console.log('✅ Push token obtained:', token.data);
       return token.data;

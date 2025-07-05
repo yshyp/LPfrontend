@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity, ActivityIn
 import { Picker } from '@react-native-picker/picker';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import HeartbeatLoader from '../../components/common/HeartbeatLoader';
 import authService from '../../services/authService';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,36 +25,129 @@ const RegisterScreen = ({ navigation }) => {
       setError('Please fill in all required fields');
       return;
     }
+
+    // Validate phone number format
+    if (!formData.identifier.includes('@')) {
+      const phoneNumber = formData.identifier.trim();
+      // Remove any non-digit characters for validation
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      
+      // Check if it's a valid phone number (should be 10-15 digits)
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+        setError('Please enter a valid phone number (10-15 digits)');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      // Auto-detect method based on identifier
-      const method = formData.identifier.includes('@') ? 'EMAIL' : 'SMS';
-      await authService.sendVerification(formData.identifier.trim(), 'EMAIL_VERIFICATION', method, formData.name.trim());
-      const methodText = method === 'EMAIL' ? 'email' : 'SMS/WhatsApp';
+      const identifier = formData.identifier.trim();
+      const isEmail = identifier.includes('@');
+      const cleanedIdentifier = isEmail ? identifier : identifier.replace(/\D/g, '');
+      
+      console.log('🔍 Starting registration for:', cleanedIdentifier);
+      
+      // Step 1: Create user account first (backend requires user to exist before verification)
+      const userRegistrationData = {
+        name: formData.name.trim(),
+        password: 'temp_password_123', // Temporary password since auth is OTP-based
+        role: formData.role,
+        bloodGroup: formData.bloodGroup,
+        longitude: 0,
+        latitude: 0,
+        verified: false
+      };
+
+      // The backend seems to require both email and phone fields with valid formats
+      // Let's provide both with valid formats that won't conflict with real users
+      if (isEmail) {
+        userRegistrationData.email = identifier;
+        // Use a valid phone format that won't conflict (fake numbers starting with 0000)
+        const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+        userRegistrationData.phone = `0000${timestamp}`; // Valid 12-digit phone starting with 0000
+      } else {
+        userRegistrationData.phone = cleanedIdentifier;
+        // Create a unique email that won't conflict
+        const timestamp = Date.now();
+        userRegistrationData.email = `phone${cleanedIdentifier}_${timestamp}@placeholder.lifepulse`;
+      }
+
+      console.log('🔍 Creating user account:');
+      console.log('📧 Is email registration?', isEmail);
+      console.log('📋 Registration data:', JSON.stringify(userRegistrationData, null, 2));
+      
+      try {
+        await authService.register(userRegistrationData);
+        console.log('✅ User account created successfully');
+      } catch (registerError) {
+        if (registerError.response?.status === 409 || 
+            (registerError.response?.status === 400 && 
+             registerError.response?.data?.error?.includes('already exists'))) {
+          // User already exists
+          Alert.alert(
+            'Account Already Exists',
+            `An account with this ${isEmail ? 'email' : 'phone number'} already exists. Please login instead.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
+            ]
+          );
+          return;
+        }
+        // Re-throw other registration errors
+        throw registerError;
+      }
+      
+      // Step 2: Send verification code to the created user
+      const method = isEmail ? 'EMAIL' : 'SMS';
+      await authService.sendVerification(cleanedIdentifier, 'LOGIN', method, formData.name.trim());
+      
+      const methodText = method === 'EMAIL' ? 'email' : 'WhatsApp/SMS';
+      const destinationText = isEmail ? identifier : `WhatsApp number ${cleanedIdentifier}`;
+      
       Alert.alert(
         'Verification Code Sent!',
-        `A 6-digit verification code has been sent to your ${methodText}.`,
+        `Your account has been created successfully! A 6-digit verification code has been sent to your ${methodText} (${destinationText}) to complete the setup.`,
         [
           {
             text: 'OK',
             onPress: () => navigation.navigate('OTPVerification', {
-              identifier: formData.identifier.trim(),
-              type: 'EMAIL_VERIFICATION',
+              identifier: cleanedIdentifier,
+              type: 'LOGIN', // Use LOGIN type since user exists now
               method: method,
-              userData: {
-                name: formData.name.trim(),
-                role: formData.role,
-                bloodGroup: formData.bloodGroup,
-                longitude: 0, // Will be updated with real location later
-                latitude: 0   // Will be updated with real location later
-              }
+              userData: userRegistrationData // Pass the created user data
             })
           }
         ]
       );
     } catch (error) {
-      console.error('Send verification error:', error);
-      setError(error.response?.data?.error || 'Failed to send verification code');
+      console.error('Registration error:', error);
+      
+      // Handle rate limiting with user-friendly message
+      if (error.response?.status === 429) {
+        const retryAfter = error.response?.data?.retryAfter || '15 minutes';
+        Alert.alert(
+          '⏰ Too Many Requests',
+          `You've sent too many verification requests. Please wait ${retryAfter} before trying again.\n\nThis helps protect your account and prevent spam.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+        setError('');
+      } else if (error.response?.status === 409 || 
+                 (error.response?.status === 400 && 
+                  error.response?.data?.error?.includes('already exists'))) {
+        // User already exists
+        Alert.alert(
+          'Account Already Exists',
+          'An account with this email or phone number already exists. Please try logging in instead.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
+          ]
+        );
+        setError('');
+      } else {
+        setError(error.response?.data?.error || 'Failed to create account or send verification code');
+      }
     } finally {
       setLoading(false);
     }
@@ -81,7 +175,7 @@ const RegisterScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Ionicons name="person-add" size={48} color="#FF3B30" style={{ marginBottom: 8 }} />
         <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join the LifePulse network</Text>
+        <Text style={styles.subtitle}>Join LifePulse - Quick signup with OTP verification</Text>
       </View>
       <View style={styles.form}>
         <View style={styles.inputRow}>
@@ -100,7 +194,7 @@ const RegisterScreen = ({ navigation }) => {
             label="Phone Number or Email"
             value={formData.identifier}
             onChangeText={(value) => updateFormData('identifier', value)}
-            placeholder="Enter your phone number or email"
+            placeholder="Enter phone (for WhatsApp) or email"
             keyboardType="default"
             autoCapitalize="none"
             style={styles.input}
@@ -113,9 +207,10 @@ const RegisterScreen = ({ navigation }) => {
               selectedValue={formData.role}
               onValueChange={(value) => updateFormData('role', value)}
               style={styles.picker}
+              itemStyle={styles.pickerItem}
             >
-              <Picker.Item label="Blood Donor" value="DONOR" />
-              <Picker.Item label="Blood Requester" value="REQUESTER" />
+              <Picker.Item label="Blood Donor" value="DONOR" color="#1C1C1E" />
+              <Picker.Item label="Blood Requester" value="REQUESTER" color="#1C1C1E" />
             </Picker>
           </View>
         </View>
@@ -126,9 +221,10 @@ const RegisterScreen = ({ navigation }) => {
               selectedValue={formData.bloodGroup}
               onValueChange={(value) => updateFormData('bloodGroup', value)}
               style={styles.picker}
+              itemStyle={styles.pickerItem}
             >
               {bloodGroups.map(group => (
-                <Picker.Item key={group} label={group} value={group} />
+                <Picker.Item key={group} label={group} value={group} color="#1C1C1E" />
               ))}
             </Picker>
           </View>
@@ -136,16 +232,19 @@ const RegisterScreen = ({ navigation }) => {
         {error ? (
           <Text style={styles.error}>{error}</Text>
         ) : null}
+        
+        {loading && (
+          <View style={styles.loaderContainer}>
+            <HeartbeatLoader text="Creating your account..." />
+          </View>
+        )}
+        
         <TouchableOpacity
-          style={[styles.registerButton, loading && styles.buttonDisabled]}
+          style={[styles.registerButton, loading && styles.buttonHidden]}
           onPress={handleSendVerification}
           disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.registerButtonText}>Send Verification Code</Text>
-          )}
+          <Text style={styles.registerButtonText}>Send Verification Code</Text>
         </TouchableOpacity>
         <Button
           title="Already have an account? Login"
@@ -209,10 +308,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5EA',
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8F9FA',
   },
   picker: {
     height: 50,
+    color: '#1C1C1E',
+  },
+  pickerItem: {
+    color: '#1C1C1E',
+    fontSize: 16,
   },
   registerButton: {
     backgroundColor: '#FF3B30',
@@ -229,6 +333,17 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.7,
+  },
+  loaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 20,
+  },
+  buttonHidden: {
+    opacity: 0,
+    height: 0,
+    marginTop: 0,
+    marginBottom: 0,
   },
   error: {
     color: 'red',

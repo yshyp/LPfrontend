@@ -1,5 +1,5 @@
 // API Configuration
-const isDevelopment = __DEV__ || process.env.NODE_ENV === 'development';
+const isDevelopment = true; // Use local development server
 const PRODUCTION_URL = 'https://lpbackend-w3g7.onrender.com';
 const LOCAL_URL = 'http://192.168.1.6:5000'; // Replace with your local IP
 

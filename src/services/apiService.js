@@ -13,6 +13,8 @@ class ApiService {
     this.client.interceptors.request.use(
       (config) => {
         console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(`🔗 Full URL: ${config.baseURL}${config.url}`);
+        console.log(`📦 Request Data:`, config.data);
         return config;
       },
       (error) => {
@@ -29,6 +31,22 @@ class ApiService {
       },
       (error) => {
         console.error('❌ API Response Error:', error.response?.status, error.response?.data);
+        
+        // Enhanced error logging for network issues
+        if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+          console.error('🚫 NETWORK ERROR DETAILS:');
+          console.error('- Trying to connect to:', error.config?.baseURL + error.config?.url);
+          console.error('- Error code:', error.code);
+          console.error('- Error message:', error.message);
+          console.error('- Check if backend server is running on the specified address');
+        }
+        
+        if (error.code === 'ECONNREFUSED') {
+          console.error('🚫 CONNECTION REFUSED:');
+          console.error('- Backend server is not running or not accessible');
+          console.error('- Check if server is running on:', error.config?.baseURL);
+        }
+        
         return Promise.reject(error);
       }
     );

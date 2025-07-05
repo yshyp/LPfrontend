@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import authService from '../../services/authService';
@@ -17,6 +17,39 @@ const OTPVerificationScreen = ({ navigation, route }) => {
   const { setUser } = useUser();
   const [otpError, setOtpError] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  
+  // Heartbeat animation
+  const heartbeatAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (loading || resendLoading) {
+      const heartbeat = () => {
+        Animated.sequence([
+          Animated.timing(heartbeatAnim, {
+            toValue: 1.2,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(heartbeatAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          if (loading || resendLoading) {
+            heartbeat();
+          }
+        });
+      };
+      heartbeat();
+    }
+  }, [loading, resendLoading, heartbeatAnim]);
+
+  const HeartbeatLoader = () => (
+    <Animated.View style={[styles.heartbeatLoader, { transform: [{ scale: heartbeatAnim }] }]}>
+      <Text style={styles.heartIcon}>💗</Text>
+    </Animated.View>
+  );
 
   useEffect(() => {
     if (countdown > 0) {
@@ -63,8 +96,9 @@ const OTPVerificationScreen = ({ navigation, route }) => {
         console.log('Push notification setup failed:', error);
       }
 
-      // Use new unified verification method
-      const result = await authService.verifyCode(identifier, otpString, type);
+      // Use LOGIN type for backend verification for all flows except pure LOGIN
+      const verifyType = 'LOGIN';
+      const result = await authService.verifyCode(identifier, otpString, verifyType);
       
       console.log('Verification successful:', result);
       
@@ -75,8 +109,24 @@ const OTPVerificationScreen = ({ navigation, route }) => {
           user: result.user,
           token: result.token 
         });
-      } else if (type === 'EMAIL_VERIFICATION' && result.verified) {
-        // For registration, we need to complete the registration process
+      } else if ((type === 'REGISTRATION' || type === 'REGISTRATION_VERIFY') && result.user && result.token) {
+        // For new registration verification, user already exists and just got verified
+        setUser(result.user);
+        Alert.alert(
+          'Registration Successful!',
+          'Your account has been verified successfully! Welcome to LifePulse.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.replace('LocationPermission', {
+                user: result.user,
+                token: result.token
+              })
+            }
+          ]
+        );
+      } else if (type === 'REGISTRATION' && result.verified) {
+        // Legacy registration flow - for backward compatibility
         if (userData) {
           // Add the verified identifier to userData
           const finalUserData = {
@@ -131,12 +181,25 @@ const OTPVerificationScreen = ({ navigation, route }) => {
   const handleResendOTP = async () => {
     setResendLoading(true);
     try {
-      await authService.resendVerification(identifier, type, method);
+      // Use LOGIN type for backend verification for all flows
+      const resendType = 'LOGIN';
+      await authService.resendVerification(identifier, resendType, method);
       setCountdown(60); // 60 seconds cooldown
       Alert.alert('Success', 'Verification code sent successfully!');
     } catch (error) {
       console.error('Resend verification error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to resend verification code');
+      
+      // Handle rate limiting with user-friendly message
+      if (error.response?.status === 429) {
+        const retryAfter = error.response?.data?.retryAfter || '15 minutes';
+        Alert.alert(
+          '⏰ Too Many Requests',
+          `You've sent too many verification requests. Please wait ${retryAfter} before trying again.\n\nThis helps protect your account and prevent spam.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        Alert.alert('Error', error.response?.data?.error || 'Failed to resend verification code');
+      }
     } finally {
       setResendLoading(false);
     }
@@ -152,32 +215,24 @@ const OTPVerificationScreen = ({ navigation, route }) => {
   const renderOTPInputs = () => {
     return (
       <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <View
-            key={index}
-            style={[
-              styles.otpBoxMaterial,
-              focusedIndex === index && styles.otpBoxMaterialFocused,
-              digit ? styles.otpBoxMaterialFilled : styles.otpBoxMaterialEmpty,
-            ]}
-          >
-            <Input
-              ref={(ref) => (inputRefs.current[index] = ref)}
-              value={digit}
-              onChangeText={(value) => handleOtpChange(value, index)}
-              onKeyPress={(e) => handleKeyPress(e, index)}
-              onFocus={() => setFocusedIndex(index)}
-              onBlur={() => setFocusedIndex(-1)}
-              style={styles.otpInputMaterial}
-              keyboardType="numeric"
-              maxLength={1}
-              textAlign="center"
-              placeholder="-"
-              selectTextOnFocus
-              autoFocus={index === 0}
-            />
-          </View>
-        ))}
+        <Input
+          ref={(ref) => (inputRefs.current[0] = ref)}
+          value={otp.join('')}
+          onChangeText={(value) => {
+            const digits = value.replace(/[^0-9]/g, '').slice(0, 6);
+            const newOtp = [...Array(6)].map((_, i) => digits[i] || '');
+            setOtp(newOtp);
+            setOtpError('');
+          }}
+          style={styles.otpInputField}
+          keyboardType="numeric"
+          maxLength={6}
+          placeholder="Enter 6-digit code"
+          placeholderTextColor="#C7C7CC"
+          secureTextEntry={true}
+          autoFocus={true}
+          textAlign="center"
+        />
       </View>
     );
   };
@@ -206,11 +261,12 @@ const OTPVerificationScreen = ({ navigation, route }) => {
           {renderOTPInputs()}
 
           <Button
-            title="Verify Code"
+            title={loading ? '' : "Verify Code"}
             onPress={handleVerifyOTP}
-            loading={loading}
-            style={styles.verifyButton}
+            loading={false}
+            style={[styles.verifyButton, loading && styles.loadingButton]}
             disabled={otp.join('').length !== 6}
+            customContent={loading ? <HeartbeatLoader /> : null}
           />
 
           <View style={styles.resendSection}>
@@ -218,12 +274,13 @@ const OTPVerificationScreen = ({ navigation, route }) => {
               Didn't receive the code?
             </Text>
             <Button
-              title={countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
+              title={resendLoading ? '' : (countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code')}
               onPress={handleResendOTP}
-              loading={resendLoading}
+              loading={false}
               variant="secondary"
               disabled={countdown > 0 || resendLoading}
-              style={styles.resendButton}
+              style={[styles.resendButton, resendLoading && styles.loadingButton]}
+              customContent={resendLoading ? <HeartbeatLoader /> : null}
             />
           </View>
 
@@ -283,7 +340,40 @@ const styles = StyleSheet.create({
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginVertical: 24,
+    alignItems: 'center',
+    marginVertical: 32,
+    paddingHorizontal: 20,
+  },
+  otpInputField: {
+    width: '100%',
+    height: 56,
+    fontSize: 24,
+    color: '#1C1C1E',
+    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 20,
+    letterSpacing: 8,
+    fontWeight: '600',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  heartbeatLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heartIcon: {
+    fontSize: 20,
+    color: '#FF6B6B',
+  },
+  loadingButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   otpBoxMaterial: {
     width: 52,

@@ -117,6 +117,112 @@ class AuthService {
   setToken(token) {
     apiService.setAuthToken(token);
   }
+
+  async checkUserExists(identifier) {
+    try {
+      // Try to send verification to see if user exists
+      // If user doesn't exist, this will return 404
+      const response = await apiService.post(ENDPOINTS.VERIFICATION.SEND, {
+        identifier: identifier.trim(),
+        type: 'LOGIN',
+        method: 'AUTO',
+        userName: 'Guest'
+      });
+      return { exists: true, data: response.data };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return { exists: false, error: error.response.data };
+      }
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
+  async loginWithPassword(identifier, password, fcmToken = null) {
+    // Determine if it's email or phone login and structure request accordingly
+    const isEmailLogin = identifier.includes('@');
+    
+    let data;
+    
+    if (isEmailLogin) {
+      // For email login, try without phone field first
+      data = { 
+        email: identifier.trim(),
+        password: password
+      };
+    } else {
+      // Phone login - ensure phone format is correct
+      let cleanPhone = identifier.trim().replace(/\D/g, ''); // Remove non-digits
+      
+      // Add country code if not present
+      if (!cleanPhone.startsWith('91') && cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone;
+      }
+      
+      data = {
+        phone: cleanPhone,
+        password: password
+      };
+    }
+
+    if (fcmToken) {
+      data.fcmToken = fcmToken;
+    }
+
+    console.log('🔐 Login attempt:', {
+      type: isEmailLogin ? 'EMAIL' : 'PHONE',
+      identifier: identifier,
+      data: { ...data, password: '[HIDDEN]' }
+    });
+
+    try {
+      const response = await apiService.post(ENDPOINTS.AUTH.LOGIN, data);
+      const { token, user } = response.data;
+      
+      // Set auth token for future requests
+      apiService.setAuthToken(token);
+      
+      console.log('✅ Login successful');
+      return { token, user };
+    } catch (error) {
+      console.error('❌ Login failed:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        sentData: { ...data, password: '[HIDDEN]' }
+      });
+      
+      // If email login fails due to phone validation, try with a minimal phone
+      if (isEmailLogin && error.response?.status === 400 && 
+          error.response?.data?.details?.some(d => d.path === 'phone')) {
+        
+        console.log('🔄 Retrying email login with phone placeholder...');
+        
+        const retryData = {
+          email: identifier.trim(),
+          phone: '9999999999', // Minimal valid phone number
+          password: password
+        };
+        
+        if (fcmToken) {
+          retryData.fcmToken = fcmToken;
+        }
+        
+        try {
+          const retryResponse = await apiService.post(ENDPOINTS.AUTH.LOGIN, retryData);
+          const { token, user } = retryResponse.data;
+          
+          apiService.setAuthToken(token);
+          console.log('✅ Email login successful with phone placeholder');
+          return { token, user };
+        } catch (retryError) {
+          console.error('❌ Retry also failed:', retryError.response?.data);
+          throw retryError;
+        }
+      }
+      
+      throw error;
+    }
+  }
 }
 
-export default new AuthService(); 
+export default new AuthService();

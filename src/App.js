@@ -4,8 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, FlatList, Switch, RefreshControl, Modal, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProvider, useUser } from './context/UserContext';
 import { useNavigationContainerRef } from '@react-navigation/native';
@@ -117,7 +115,9 @@ function LocationPermissionScreen({ navigation, route }) {
 
 // Donor Dashboard Screen
 function DonorDashboardScreen({ navigation, route }) {
-  const { user, token } = route.params || {};
+  const { user: contextUser } = useUser(); // Get user from context as fallback
+  const { user: routeUser, token } = route.params || {};
+  const user = routeUser || contextUser; // Use route user first, fallback to context user
   const [availability, setAvailability] = useState(user?.availability || false);
   const [nearbyRequests, setNearbyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -128,6 +128,10 @@ function DonorDashboardScreen({ navigation, route }) {
   // Fetch eligibility status
   const fetchEligibility = async () => {
     try {
+      if (!user || !user._id) {
+        console.warn('User not available for eligibility check');
+        return;
+      }
       const result = await userService.getEligibility(user._id);
       setEligibility(result);
     } catch (error) {
@@ -361,7 +365,9 @@ function DonorDashboardScreen({ navigation, route }) {
 
 // Requester Dashboard Screen
 function RequesterDashboardScreen({ navigation, route }) {
-  const { user, token } = route.params || {};
+  const { user: contextUser } = useUser(); // Get user from context as fallback
+  const { user: routeUser, token } = route.params || {};
+  const user = routeUser || contextUser; // Use route user first, fallback to context user
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
