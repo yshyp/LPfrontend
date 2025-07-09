@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import SecureStorageService from './secureStorageService';
 import apiService from './apiService';
 import { ENDPOINTS } from '../config/api';
 
@@ -42,23 +43,34 @@ class NotificationService {
   }
 
   async getExpoPushToken() {
-    if (!Device.isDevice) {
-      console.log('⚠️ Push tokens not available on simulator');
-      return null;
-    }
-
     try {
-      // Get the project ID from app config
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId || 
-                       Constants.expoConfig?.projectId ||
-                       'your-expo-project-id';
+      // Check if running on device (not simulator/emulator)
+      if (!Device.isDevice) {
+        console.log('⚠️ Must use physical device for Push Notifications');
+        // For development/testing, return a mock token
+        return 'SIMULATOR_TOKEN_' + Date.now();
+      }
 
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        console.log('❌ Failed to get push token for push notification!');
+        return null;
+      }
+
+      // Get the Expo push token
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: projectId,
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
       });
       
-      console.log('✅ Push token obtained:', token.data);
-      return token.data;
+      console.log('✅ Expo push token:', token.data);
+      return token.data; // This should be compatible with FCM
     } catch (error) {
       console.error('❌ Error getting push token:', error);
       return null;
@@ -67,21 +79,68 @@ class NotificationService {
 
   async registerFCMToken() {
     try {
+      // Check if user is authenticated
+      const authToken = await SecureStorageService.getAuthToken();
+      if (!authToken) {
+        console.log('⚠️ User not authenticated, skipping FCM token registration');
+        return false;
+      }
+
+      console.log('🔐 Auth token found, length:', authToken.length);
+
+      // Skip FCM registration on simulators
+      if (!Device.isDevice) {
+        console.log('⚠️ Simulator detected - skipping FCM token registration');
+        console.log('📱 Use a physical device to test push notifications');
+        return true;
+      }
+
       const token = await this.getExpoPushToken();
       if (!token) {
         console.log('⚠️ No push token available');
         return false;
       }
 
+      // Store the token locally
+      await SecureStorageService.storeFCMToken(token);
+
+      // Set auth token for API call - ensure it's set correctly
+      apiService.setAuthToken(authToken);
+      
+      // Double-check that the auth token is actually set
+      console.log('🔍 API Service auth header after setting:', apiService.hasAuthToken());
+      console.log('🔍 Auth header value:', apiService.getAuthToken()?.substring(0, 30) + '...');
+
+      // Add a small delay to ensure auth token is properly set
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Final check before making the request
+      if (!apiService.hasAuthToken()) {
+        console.error('❌ Auth token not set in API service - retrying...');
+        apiService.setAuthToken(authToken);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       // Register token with backend
+      console.log('📱 Attempting to register FCM token with backend...');
+      console.log('📱 Token preview:', token.substring(0, 20) + '...');
+      
       const response = await apiService.post('/api/users/fcm-token', {
         fcmToken: token
       });
       
-      console.log('✅ FCM token registered with backend');
+      console.log('✅ FCM token registered with backend:', response.data);
       return true;
     } catch (error) {
-      console.error('❌ Error registering FCM token:', error);
+      if (error.response?.status === 404) {
+        console.error('❌ User not found - auth token may be invalid or expired');
+        console.error('❌ Response data:', error.response?.data);
+      } else if (error.response?.status === 401) {
+        console.error('❌ Unauthorized - auth token invalid or expired');
+        console.error('❌ Response data:', error.response?.data);
+      } else {
+        console.error('❌ Error registering FCM token:', error.response?.data || error.message);
+      }
       return false;
     }
   }
@@ -159,4 +218,4 @@ The app will attempt to use push notifications anyway.
   }
 }
 
-export default new NotificationService(); 
+export default new NotificationService();

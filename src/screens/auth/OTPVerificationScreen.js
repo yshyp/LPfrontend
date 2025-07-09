@@ -7,6 +7,8 @@ import authService from '../../services/authService';
 import notificationService from '../../services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '../../context/UserContext';
+import SecureStorageService from '../../services/secureStorageService';
+import apiService from '../../services/apiService';
 
 const OTPVerificationScreen = ({ navigation, route }) => {
   const { identifier, type, method, userData } = route.params || {};
@@ -88,15 +90,6 @@ const OTPVerificationScreen = ({ navigation, route }) => {
     setOtpError('');
     setLoading(true);
     try {
-      // Get push token for notifications
-      let fcmToken = null;
-      try {
-        await notificationService.requestPermissions();
-        fcmToken = await notificationService.getExpoPushToken();
-      } catch (error) {
-        console.log('Push notification setup failed:', error);
-      }
-
       // Use LOGIN type for backend verification for all flows except pure LOGIN
       const verifyType = 'LOGIN';
       const result = await authService.verifyCode(identifier, otpString, verifyType);
@@ -106,6 +99,31 @@ const OTPVerificationScreen = ({ navigation, route }) => {
       // For LOGIN type, we get user and token directly
       if (type === 'LOGIN' && result.user && result.token) {
         setUser(result.user);
+        
+        // Store auth token FIRST
+        await SecureStorageService.storeAuthToken(result.token);
+        
+        // Set auth token in API service and verify it's set
+        apiService.setAuthToken(result.token);
+        
+        // Verify the token is actually set
+        console.log('🔍 Auth token stored, verifying API service...');
+        console.log('🔍 Token preview:', result.token.substring(0, 20) + '...');
+        console.log('🔍 API Service has auth token:', apiService.hasAuthToken());
+        console.log('🔍 Current auth header:', apiService.getAuthToken()?.substring(0, 30) + '...');
+
+        // Wait longer and add more debugging
+        setTimeout(async () => {
+          try {
+            console.log('🔍 Starting FCM registration...');
+            console.log('🔍 Final check - API Service has auth token:', apiService.hasAuthToken());
+            const success = await notificationService.registerFCMToken();
+            console.log('🔍 FCM registration result:', success);
+          } catch (fcmError) {
+            console.error('FCM registration failed:', fcmError);
+          }
+        }, 2000);
+        
         navigation.replace('LocationPermission', { 
           user: result.user,
           token: result.token 
@@ -113,6 +131,20 @@ const OTPVerificationScreen = ({ navigation, route }) => {
       } else if ((type === 'REGISTRATION' || type === 'REGISTRATION_VERIFY') && result.user && result.token) {
         // For new registration verification, user already exists and just got verified
         setUser(result.user);
+        
+        // Store auth token FIRST
+        await SecureStorageService.storeAuthToken(result.token);
+        apiService.setAuthToken(result.token);
+        
+        // Wait a moment for auth to be set, then register FCM token
+        setTimeout(async () => {
+          try {
+            await notificationService.registerFCMToken();
+          } catch (fcmError) {
+            console.error('FCM registration failed:', fcmError);
+          }
+        }, 1000);
+        
         Alert.alert(
           'Registration Successful!',
           'Your account has been verified successfully! Welcome to LifePulse.',
@@ -132,8 +164,7 @@ const OTPVerificationScreen = ({ navigation, route }) => {
           // Add the verified identifier to userData
           const finalUserData = {
             ...userData,
-            [identifier.includes('@') ? 'email' : 'phone']: identifier,
-            ...(typeof fcmToken === 'string' ? { fcmToken } : {})
+            [identifier.includes('@') ? 'email' : 'phone']: identifier
           };
 
           console.log('🔍 Final user data being sent:', finalUserData);
@@ -142,6 +173,20 @@ const OTPVerificationScreen = ({ navigation, route }) => {
             // Register the user with the verified identifier
             const registrationResult = await authService.registerVerified(finalUserData);
             setUser(registrationResult.user);
+            
+            // Store auth token FIRST
+            await SecureStorageService.storeAuthToken(registrationResult.token);
+            apiService.setAuthToken(registrationResult.token);
+
+            // Wait a moment for auth to be set, then register FCM token
+            setTimeout(async () => {
+              try {
+                await notificationService.registerFCMToken();
+              } catch (fcmError) {
+                console.error('FCM registration failed:', fcmError);
+              }
+            }, 1000);
+            
             Alert.alert(
               'Registration Successful!',
               'Your account has been created successfully.',
@@ -168,6 +213,7 @@ const OTPVerificationScreen = ({ navigation, route }) => {
         Alert.alert('Success', result.message || 'Verification successful!');
         navigation.goBack();
       }
+
     } catch (error) {
       console.error('Verification error:', error);
       Alert.alert('Error', error.response?.data?.error || 'Verification failed');
@@ -436,4 +482,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default OTPVerificationScreen; 
+export default OTPVerificationScreen;

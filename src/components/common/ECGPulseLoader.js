@@ -1,302 +1,202 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Animated, StyleSheet } from 'react-native';
 
-const { width } = Dimensions.get('window');
-
-const ECGPulseLoader = ({ 
-  size = 200, 
-  color = '#FF3B30', 
-  text = null, 
-  style = {},
-  speed = 1.5 
-}) => {
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const lineAnim = useRef(new Animated.Value(0)).current;
+const ECGPulseLoader = ({ size = 100, color = '#e74c3c', strokeWidth = 3 }) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Continuous pulse animation
-    const pulseAnimation = () => {
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000 / speed,
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 2000 / speed,
-          useNativeDriver: false,
-        }),
-      ]).start(() => pulseAnimation());
+    const createPulseAnimation = () => {
+      return Animated.loop(
+        Animated.sequence([
+          // Flat line
+          Animated.timing(animatedValue, {
+            toValue: 0.1,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          // Small rise
+          Animated.timing(animatedValue, {
+            toValue: 0.2,
+            duration: 50,
+            useNativeDriver: false,
+          }),
+          // Sharp spike up
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 80,
+            useNativeDriver: false,
+          }),
+          // Sharp drop down
+          Animated.timing(animatedValue, {
+            toValue: -0.3,
+            duration: 60,
+            useNativeDriver: false,
+          }),
+          // Return to baseline
+          Animated.timing(animatedValue, {
+            toValue: 0.1,
+            duration: 100,
+            useNativeDriver: false,
+          }),
+          // Flat line pause
+          Animated.timing(animatedValue, {
+            toValue: 0.1,
+            duration: 400,
+            useNativeDriver: false,
+          }),
+        ])
+      );
     };
 
-    // Heartbeat scale animation
-    const heartbeatAnimation = () => {
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1000),
-      ]).start(() => heartbeatAnimation());
-    };
+    const animation = createPulseAnimation();
+    animation.start();
 
-    // Moving line animation
-    const lineAnimation = () => {
-      Animated.timing(lineAnim, {
-        toValue: 1,
-        duration: 3000 / speed,
-        useNativeDriver: false,
-      }).start(() => {
-        lineAnim.setValue(0);
-        lineAnimation();
+    return () => animation.stop();
+  }, [animatedValue]);
+
+  // Create multiple pulse points for ECG effect
+  const renderPulseWave = () => {
+    const points = [];
+    const numPoints = 8;
+    
+    for (let i = 0; i < numPoints; i++) {
+      const animatedHeight = animatedValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [size * 0.5, size * 0.1], // Inverted for ECG effect
+        extrapolate: 'clamp',
       });
-    };
 
-    pulseAnimation();
-    heartbeatAnimation();
-    lineAnimation();
-  }, [pulseAnim, scaleAnim, lineAnim, speed]);
+      const opacity = animatedValue.interpolate({
+        inputRange: [0, 0.3, 0.7, 1],
+        outputRange: [0.3, 1, 1, 0.3],
+        extrapolate: 'clamp',
+      });
 
-  // Create ECG waveform using multiple animated lines
-  const createECGLines = () => {
-    const lines = [];
-    const lineWidth = size;
-    const lineHeight = size * 0.6;
-    const centerY = lineHeight / 2;
-    
-    // Base line
-    lines.push(
-      <Animated.View
-        key="base"
-        style={[
-          styles.ecgLine,
-          {
-            width: lineWidth,
-            height: 2,
-            backgroundColor: color,
-            opacity: 0.3,
-            position: 'absolute',
-            top: centerY,
-          }
-        ]}
-      />
-    );
-
-    // P wave (small bump)
-    const pWaveOpacity = pulseAnim.interpolate({
-      inputRange: [0, 0.2, 0.4, 1],
-      outputRange: [0, 1, 1, 0],
-    });
-    
-    lines.push(
-      <Animated.View
-        key="p-wave"
-        style={[
-          styles.ecgLine,
-          {
-            width: 20,
-            height: 2,
-            backgroundColor: color,
-            opacity: pWaveOpacity,
-            position: 'absolute',
-            top: centerY - 5,
-            left: lineWidth * 0.1,
-            transform: [{ rotate: '15deg' }],
-          }
-        ]}
-      />
-    );
-
-    // QRS complex (sharp spike)
-    const qrsOpacity = pulseAnim.interpolate({
-      inputRange: [0, 0.3, 0.7, 1],
-      outputRange: [0, 1, 1, 0],
-    });
-    
-    lines.push(
-      <Animated.View
-        key="qrs"
-        style={[
-          styles.ecgLine,
-          {
-            width: 4,
-            height: 40,
-            backgroundColor: color,
-            opacity: qrsOpacity,
-            position: 'absolute',
-            top: centerY - 20,
-            left: lineWidth * 0.3,
-          }
-        ]}
-      />
-    );
-
-    // T wave (rounded bump)
-    const tWaveOpacity = pulseAnim.interpolate({
-      inputRange: [0, 0.6, 0.8, 1],
-      outputRange: [0, 1, 1, 0],
-    });
-    
-    lines.push(
-      <Animated.View
-        key="t-wave"
-        style={[
-          styles.ecgLine,
-          {
-            width: 15,
-            height: 2,
-            backgroundColor: color,
-            opacity: tWaveOpacity,
-            position: 'absolute',
-            top: centerY - 8,
-            left: lineWidth * 0.55,
-            transform: [{ rotate: '-10deg' }],
-          }
-        ]}
-      />
-    );
-
-    // Moving dot
-    const dotPosition = lineAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, lineWidth - 10],
-    });
-
-    lines.push(
-      <Animated.View
-        key="moving-dot"
-        style={[
-          styles.movingDot,
-          {
-            left: dotPosition,
-            backgroundColor: color,
-          }
-        ]}
-      />
-    );
-
-    return lines;
+      points.push(
+        <Animated.View
+          key={i}
+          style={[
+            styles.pulseLine,
+            {
+              height: i === 3 ? animatedHeight : size * 0.5, // Main spike at center
+              width: strokeWidth,
+              backgroundColor: color,
+              opacity: i === 3 ? opacity : 0.4,
+              marginHorizontal: 2,
+              transform: [
+                {
+                  scaleY: i === 3 ? 1 : (i === 2 || i === 4 ? 0.3 : 0.1)
+                }
+              ]
+            }
+          ]}
+        />
+      );
+    }
+    return points;
   };
 
   return (
-    <View style={[styles.container, style]}>
-      <Animated.View style={[styles.ecgContainer, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={[styles.ecgMonitor, { width: size, height: size * 0.6 }]}>
-          {/* Grid lines for ECG monitor effect */}
-          {[...Array(5)].map((_, i) => (
-            <View
-              key={`h-${i}`}
-              style={[
-                styles.gridLine,
-                {
-                  top: (size * 0.6 / 5) * i,
-                  width: size,
-                  height: 1,
-                }
-              ]}
-            />
-          ))}
-          {[...Array(5)].map((_, i) => (
-            <View
-              key={`v-${i}`}
-              style={[
-                styles.gridLine,
-                {
-                  left: (size / 5) * i,
-                  width: 1,
-                  height: size * 0.6,
-                }
-              ]}
-            />
-          ))}
-          
-          {/* ECG waveform lines */}
-          {createECGLines()}
-        </View>
-        
-        {/* Heart icon overlay */}
-        <View style={styles.heartContainer}>
-          <Text style={[styles.heartIcon, { color }]}>❤️</Text>
-        </View>
-      </Animated.View>
-      
-      {text && (
-        <Text style={[styles.loadingText, { color }]}>
-          {text}
-        </Text>
-      )}
+    <View style={[styles.container, { width: size * 1.5, height: size }]}>
+      {/* Background ECG grid */}
+      <View style={styles.gridBackground}>
+        {/* Horizontal lines */}
+        {[...Array(5)].map((_, i) => (
+          <View
+            key={`h-${i}`}
+            style={[
+              styles.gridLine,
+              {
+                top: (size / 5) * i,
+                width: '100%',
+                height: 1,
+                backgroundColor: `${color}20`,
+              }
+            ]}
+          />
+        ))}
+        {/* Vertical lines */}
+        {[...Array(8)].map((_, i) => (
+          <View
+            key={`v-${i}`}
+            style={[
+              styles.gridLine,
+              {
+                left: (size * 1.5 / 8) * i,
+                height: '100%',
+                width: 1,
+                backgroundColor: `${color}20`,
+              }
+            ]}
+          />
+        ))}
+      </View>
+
+      {/* Pulse wave */}
+      <View style={styles.pulseContainer}>
+        {renderPulseWave()}
+      </View>
+
+      {/* Animated scanning line */}
+      <Animated.View
+        style={[
+          styles.scanLine,
+          {
+            backgroundColor: color,
+            opacity: animatedValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0.3, 0.8],
+              extrapolate: 'clamp',
+            }),
+            transform: [
+              {
+                translateX: animatedValue.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, size * 0.5],
+                  extrapolate: 'clamp',
+                })
+              }
+            ]
+          }
+        ]}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-  },
-  ecgContainer: {
-    position: 'relative',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ecgMonitor: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
     position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+    padding: 10,
+  },
+  gridBackground: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
   },
   gridLine: {
     position: 'absolute',
-    backgroundColor: '#E5E5EA',
-    opacity: 0.3,
   },
-  ecgLine: {
+  pulseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    zIndex: 2,
+  },
+  pulseLine: {
     borderRadius: 1,
   },
-  movingDot: {
+  scanLine: {
     position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    top: '50%',
-    marginTop: -4,
-  },
-  heartContainer: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  heartIcon: {
-    fontSize: 20,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    width: 2,
+    height: '80%',
+    zIndex: 3,
   },
 });
 
-export default ECGPulseLoader; 
+export default ECGPulseLoader;
