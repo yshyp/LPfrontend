@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import HeartbeatLoader from '../../components/common/HeartbeatLoader';
+import ECGPulseOverlay from '../../components/common/ECGPulseOverlay';
 import authService from '../../services/authService';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -235,7 +235,7 @@ const RegisterScreen = ({ navigation }) => {
         
         {loading && (
           <View style={styles.loaderContainer}>
-            <HeartbeatLoader text="Creating your account..." />
+            <Text style={styles.loadingText}>Creating your account...</Text>
           </View>
         )}
         
@@ -252,6 +252,12 @@ const RegisterScreen = ({ navigation }) => {
           variant="secondary"
         />
       </View>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={loading}
+        text="Creating your account..."
+      />
     </ScrollView>
   );
 };
@@ -349,6 +355,12 @@ const styles = StyleSheet.create({
     color: 'red',
     marginTop: 8,
     marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
     textAlign: 'center',
   },
 });

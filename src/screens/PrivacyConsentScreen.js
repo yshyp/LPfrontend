@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import Button from '../components/common/Button';
+import ECGPulseLoader from '../components/common/ECGPulseLoader';
 import { useUser } from '../context/UserContext';
 
 const PrivacyConsentScreen = ({ navigation }) => {

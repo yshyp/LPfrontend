@@ -79,4 +79,56 @@ class ApiService {
   }
 }
 
-export default new ApiService(); 
+// Enhanced error logging in API service
+export const makeRequest = async (method, endpoint, data = null, headers = {}) => {
+  console.log('API Request:', method, endpoint);
+  console.log('Full URL:', API_CONFIG.BASE_URL + endpoint);
+  console.log('Request Data:', data);
+  console.log('Request Headers:', headers);
+  console.log('Timestamp:', new Date().toISOString());
+
+  try {
+    const config = {
+      method,
+      url: API_CONFIG.BASE_URL + endpoint,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: {
+        ...API_CONFIG.HEADERS,
+        ...headers,
+      },
+    };
+
+    if (data) {
+      config.data = data;
+    }
+
+    console.log('Making axios request with config:', config);
+    const response = await axios(config);
+    
+    console.log('API Response Success:', {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+      timestamp: new Date().toISOString()
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('API Response Error:', error.response?.status, error.response?.statusText);
+    console.error('NETWORK ERROR DETAILS:');
+    console.error('- Trying to connect to:', API_CONFIG.BASE_URL + endpoint);
+    console.error('- Error code:', error.code);
+    console.error('- Error message:', error.message);
+    console.error('- Response data:', error.response?.data);
+    console.error('- Response status:', error.response?.status);
+    console.error('- Response headers:', error.response?.headers);
+    console.error('- Request config:', error.config);
+    console.error('- Check if backend server is running on the specified address');
+    console.error('- Full error object:', error);
+    console.error('- Timestamp:', new Date().toISOString());
+    
+    throw error;
+  }
+};
+
+export default new ApiService();

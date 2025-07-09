@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import userService from '../services/userService';
 import Card from '../components/common/Card';
+import ECGPulseOverlay from '../components/common/ECGPulseOverlay';
 
 const BADGES = [
   { min: 10, label: '🥇 Gold' },
@@ -54,7 +55,7 @@ export default function LeaderboardScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading leaderboard...</Text>
       </View>
     );
   }
@@ -67,6 +68,12 @@ export default function LeaderboardScreen() {
         renderItem={renderItem}
         keyExtractor={(_, idx) => idx.toString()}
         ListEmptyComponent={<Text style={styles.empty}>No donors yet.</Text>}
+      />
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={loading}
+        text="Loading leaderboard..."
       />
     </View>
   );
@@ -135,5 +142,11 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 32,
     fontSize: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 }); 

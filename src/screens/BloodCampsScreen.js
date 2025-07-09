@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, RefreshControl, TouchableOpacity, Modal, TextInput, Platform, Linking } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Modal, TextInput, Platform, Linking } from 'react-native';
 import { bloodCampsService } from '../services';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import ECGPulseOverlay from '../components/common/ECGPulseOverlay';
 import { Ionicons } from '@expo/vector-icons';
 
 const BloodCampsScreen = () => {
@@ -143,8 +144,8 @@ const BloodCampsScreen = () => {
       </View>
       {/* List */}
       {loading ? (
-        <View style={styles.list}>
-          {[1,2,3].map((_, i) => <View key={i}>{renderSkeleton()}</View>)}
+        <View style={styles.centered}>
+          <Text style={styles.loadingText}>Loading blood camps...</Text>
         </View>
       ) : error ? (
         <View style={styles.centered}>
@@ -202,6 +203,12 @@ const BloodCampsScreen = () => {
           </View>
         </View>
       </Modal>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={loading}
+        text="Loading blood camps..."
+      />
     </View>
   );
 };
@@ -367,6 +374,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     justifyContent: 'flex-end',
     flexWrap: 'wrap',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });
 

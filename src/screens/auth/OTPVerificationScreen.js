@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import ECGPulseLoader from '../../components/common/ECGPulseLoader';
 import authService from '../../services/authService';
 import notificationService from '../../services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,9 +47,9 @@ const OTPVerificationScreen = ({ navigation, route }) => {
   }, [loading, resendLoading, heartbeatAnim]);
 
   const HeartbeatLoader = () => (
-    <Animated.View style={[styles.heartbeatLoader, { transform: [{ scale: heartbeatAnim }] }]}>
+    <View style={styles.heartbeatLoader}>
       <Text style={styles.heartIcon}>💗</Text>
-    </Animated.View>
+    </View>
   );
 
   useEffect(() => {

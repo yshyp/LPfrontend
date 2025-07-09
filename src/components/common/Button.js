@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import ECGPulseOverlay from './ECGPulseOverlay';
 
 const Button = ({ 
   title, 
@@ -32,10 +33,7 @@ const Button = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator 
-          color={variant === 'primary' ? '#fff' : '#007AFF'} 
-          size="small" 
-        />
+        <Text style={buttonTextStyle}>Loading...</Text>
       ) : (
         <Text style={buttonTextStyle}>{title}</Text>
       )}

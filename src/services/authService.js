@@ -93,8 +93,39 @@ class AuthService {
   }
 
   async register(userData) {
-    const response = await apiService.post(ENDPOINTS.AUTH.REGISTER, userData);
-    return response.data;
+    console.log('🔍 Starting registration for:', userData.phone);
+    console.log('🔍 Creating user account:');
+    console.log('📧 Is email registration?', userData.email && !userData.email.includes('@placeholder.lifepulse'));
+    console.log('📋 Registration data:', userData);
+    console.log('⏰ Registration timestamp:', new Date().toISOString());
+
+    try {
+      console.log('📡 About to make registration API call...');
+      const response = await apiService.post(ENDPOINTS.AUTH.REGISTER, userData);
+      console.log('✅ Registration API call successful:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Registration API call failed');
+      console.error('❌ Registration error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (error.response) {
+        console.error('❌ Server responded with error:', error.response.data);
+        throw new Error(error.response.data.message || 'Registration failed');
+      } else if (error.request) {
+        console.error('❌ No response received from server:', error.request);
+        throw new Error('No response from server. Please check your internet connection.');
+      } else {
+        console.error('❌ Request setup error:', error.message);
+        throw new Error('Failed to send registration request');
+      }
+    }
   }
 
   async registerVerified(userData) {

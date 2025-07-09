@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import HeartbeatLoader from '../../components/common/HeartbeatLoader';
+import ECGPulseOverlay from '../../components/common/ECGPulseOverlay';
 import authService from '../../services/authService';
 import { UserContext } from '../../context/UserContext';
 
@@ -176,7 +176,7 @@ const LoginScreen = ({ navigation }) => {
 
             {loading ? (
               <View style={styles.loaderContainer}>
-                <HeartbeatLoader text="Sending verification code..." />
+                <Text style={styles.loadingText}>Sending verification code...</Text>
               </View>
             ) : (
               <Button
@@ -219,7 +219,7 @@ const LoginScreen = ({ navigation }) => {
 
             {loading ? (
               <View style={styles.loaderContainer}>
-                <HeartbeatLoader text="Verifying code..." />
+                <Text style={styles.loadingText}>Verifying code...</Text>
               </View>
             ) : (
               <Button
@@ -245,6 +245,12 @@ const LoginScreen = ({ navigation }) => {
           variant="secondary"
         />
       </View>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={loading}
+        text={otpSent ? "Verifying code..." : "Sending verification code..."}
+      />
     </ScrollView>
   );
 };
@@ -342,6 +348,12 @@ const styles = StyleSheet.create({
   dividerText: {
     color: '#8E8E93',
     fontSize: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });
 

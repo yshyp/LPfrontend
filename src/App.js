@@ -28,6 +28,7 @@ import notificationService from './services/notificationService';
 import Button from './components/common/Button';
 import Input from './components/common/Input';
 import Card from './components/common/Card';
+import ECGPulseOverlay from './components/common/ECGPulseOverlay';
 
 const Stack = createNativeStackNavigator();
 
@@ -314,6 +315,26 @@ function DonorDashboardScreen({ navigation, route }) {
         )}
       </View>
 
+      <View style={styles.testSection}>
+        <Text style={styles.sectionTitle}>Debug Tools</Text>
+        <Button
+          title="Test Notification"
+          onPress={async () => {
+            try {
+              await notificationService.testNotification(
+                '🧪 Test Notification',
+                'This is a test notification from LifePulse!',
+                { type: 'test' }
+              );
+              Alert.alert('Success', 'Test notification sent!');
+            } catch (error) {
+              Alert.alert('Error', error.response?.data?.error || 'Failed to send test notification');
+            }
+          }}
+          style={styles.testButton}
+        />
+      </View>
+
       <View style={styles.requestsSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Nearby Blood Requests</Text>
@@ -325,8 +346,8 @@ function DonorDashboardScreen({ navigation, route }) {
           />
         </View>
         {requestsLoading ? (
-          <View>
-            {[1,2,3].map((_, i) => <View key={i}>{renderSkeleton()}</View>)}
+          <View style={styles.loaderContainer}>
+            <Text style={styles.loadingText}>Loading nearby requests...</Text>
           </View>
         ) : (
           <FlatList
@@ -359,6 +380,12 @@ function DonorDashboardScreen({ navigation, route }) {
           style={{ flex: 1, marginLeft: 8 }}
         />
       </View>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={requestsLoading}
+        text="Loading nearby requests..."
+      />
     </View>
   );
 }
@@ -579,8 +606,8 @@ function RequesterDashboardScreen({ navigation, route }) {
         </View>
 
         {requestsLoading ? (
-          <View>
-            {[1,2,3].map((_, i) => <View key={i}>{renderSkeleton()}</View>)}
+          <View style={styles.loaderContainer}>
+            <Text style={styles.loaderText}>Loading your requests...</Text>
           </View>
         ) : (
           <FlatList
@@ -780,6 +807,12 @@ function NotificationsScreen({ navigation, route }) {
           variant="secondary"
         />
       </View>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={requestsLoading}
+        text="Loading your requests..."
+      />
     </View>
   );
 }
@@ -792,16 +825,17 @@ function MainApp() {
     // Show Expo Go warning
     notificationService.showExpoGoWarning();
     
-    // Only set up notification listeners if notifications are supported
-    if (notificationService.isNotificationsSupported()) {
-      const subscription = notificationService.addNotificationResponseReceivedListener(response => {
-        const data = response.notification.request.content.data;
-        if (data.type === 'chat_message' && data.requestId && user) {
-          navigationRef.navigate('Chat', { requestId: data.requestId, user });
-        }
-      });
-      return () => subscription?.remove();
-    }
+    // Initialize notifications
+    notificationService.initialize();
+    
+    // Set up notification listeners
+    const subscription = notificationService.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data.type === 'chat_message' && data.requestId && user) {
+        navigationRef.navigate('Chat', { requestId: data.requestId, user });
+      }
+    });
+    return () => subscription?.remove();
   }, [user]);
 
   return (
@@ -1144,6 +1178,16 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 12,
   },
+  testSection: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    margin: 16,
+    borderRadius: 12,
+  },
+  testButton: {
+    backgroundColor: '#FF9500',
+    marginTop: 8,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1163,5 +1207,23 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     marginTop: 4,
     marginLeft: 40,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
+  },
+  loaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 }); 

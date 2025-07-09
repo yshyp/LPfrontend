@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
-  ActivityIndicator
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ECGPulseOverlay from './common/ECGPulseOverlay';
 
 const VerificationMethodSelector = ({
   onMethodSelect,
@@ -176,7 +176,7 @@ const VerificationMethodSelector = ({
         disabled={!identifier || loading || disabled}
       >
         {loading ? (
-          <ActivityIndicator color="white" />
+          <Text style={styles.sendButtonText}>Loading...</Text>
         ) : (
           <>
             <Ionicons name="send" size={20} color="white" />
@@ -184,6 +184,12 @@ const VerificationMethodSelector = ({
           </>
         )}
       </TouchableOpacity>
+      
+      {/* ECG Pulse Overlay Loader */}
+      <ECGPulseOverlay 
+        visible={loading}
+        text="Sending verification code..."
+      />
     </View>
   );
 };

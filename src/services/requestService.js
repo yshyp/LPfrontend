@@ -28,4 +28,4 @@ class RequestService {
   }
 }
 
-export default new RequestService(); 
+export default new RequestService();

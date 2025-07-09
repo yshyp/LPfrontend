@@ -11,7 +11,7 @@ export const API_CONFIG = {
   }
 };
 
-// API Endpoints
+// API Endpointsr
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
@@ -33,6 +33,7 @@ export const ENDPOINTS = {
     DONATIONS: '/api/users/me/donations',
     ELIGIBILITY: (userId) => `/api/users/${userId}/eligibility`,
     LEADERBOARD: '/api/users/leaderboard',
+    FCM_TOKEN: '/api/users/fcm-token',
   },
   REQUESTS: {
     LIST: '/api/requests',
@@ -41,6 +42,7 @@ export const ENDPOINTS = {
   },
   NOTIFICATIONS: {
     PUSH: '/api/notifications/push',
+    TEST: '/api/notifications/test',
   },
   BLOOD_CAMPS: {
     LIST: '/api/blood-camps',
