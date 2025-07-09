@@ -23,6 +23,9 @@ class ApiService {
         if (config.data) {
           console.log('📦 Request Data:', config.data);
         }
+        if (config.params) {
+          console.log('🔍 Query Params:', config.params);
+        }
         console.log('🔐 Has Auth Header:', !!config.headers.Authorization);
         return config;
       },
@@ -67,45 +70,45 @@ class ApiService {
     return this.instance.defaults.headers.common['Authorization'];
   }
 
-  async get(endpoint) {
+  async get(endpoint, config = {}) {
     try {
-      const response = await this.instance.get(endpoint);
+      const response = await this.instance.get(endpoint, config);
       return response;
     } catch (error) {
       throw error;
     }
   }
 
-  async post(endpoint, data) {
+  async post(endpoint, data, config = {}) {
     try {
-      const response = await this.instance.post(endpoint, data);
+      const response = await this.instance.post(endpoint, data, config);
       return response;
     } catch (error) {
       throw error;
     }
   }
 
-  async put(endpoint, data) {
+  async put(endpoint, data, config = {}) {
     try {
-      const response = await this.instance.put(endpoint, data);
+      const response = await this.instance.put(endpoint, data, config);
       return response;
     } catch (error) {
       throw error;
     }
   }
 
-  async delete(endpoint) {
+  async delete(endpoint, config = {}) {
     try {
-      const response = await this.instance.delete(endpoint);
+      const response = await this.instance.delete(endpoint, config);
       return response;
     } catch (error) {
       throw error;
     }
   }
 
-  async patch(endpoint, data) {
+  async patch(endpoint, data, config = {}) {
     try {
-      const response = await this.instance.patch(endpoint, data);
+      const response = await this.instance.patch(endpoint, data, config);
       return response;
     } catch (error) {
       throw error;

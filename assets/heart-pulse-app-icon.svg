@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Red Heart -->
+  <path d="M512 900c-140-100-280-250-280-400 0-140 100-240 240-240 70 0 140 50 180 100 40-50 110-100 180-100 140 0 240 100 240 240 0 150-140 300-280 400-20 0-40 0-40 0z" 
+        fill="#e74c3c" 
+        stroke="#c0392b" 
+        stroke-width="12"/>
+  
+  <!-- White ECG Pulse Line -->
+  <path d="M200 450 L350 450 L420 380 L480 520 L540 430 L600 480 L660 450 L720 450 L780 430 L840 480 L900 450 L960 450 L1020 430 L1080 480 L1140 450 L1200 450" 
+        stroke="#ffffff" 
+        stroke-width="20" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- Key pulse points as dots -->
+  <circle cx="420" cy="380" r="16" fill="#ffffff"/>
+  <circle cx="480" cy="520" r="16" fill="#ffffff"/>
+  <circle cx="540" cy="430" r="16" fill="#ffffff"/>
+  <circle cx="600" cy="480" r="16" fill="#ffffff"/>
+  <circle cx="780" cy="430" r="16" fill="#ffffff"/>
+  <circle cx="840" cy="480" r="16" fill="#ffffff"/>
+  <circle cx="1020" cy="430" r="16" fill="#ffffff"/>
+  <circle cx="1080" cy="480" r="16" fill="#ffffff"/>
+</svg> 

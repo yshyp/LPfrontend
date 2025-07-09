@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle for better contrast -->
+  <circle cx="512" cy="512" r="480" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- Red Heart -->
+  <path d="M512 800c-120-80-240-200-240-320 0-120 80-200 200-200 60 0 120 40 160 80 40-40 100-80 160-80 120 0 200 80 200 200 0 120-120 240-240 320-20 0-40 0-40 0z" 
+        fill="#e74c3c" 
+        stroke="#c0392b" 
+        stroke-width="8"/>
+  
+  <!-- White ECG Pulse Line -->
+  <path d="M300 400 L350 400 L370 350 L390 450 L410 380 L430 420 L450 400 L500 400 L520 380 L540 420 L560 400 L580 420 L600 380 L620 400 L650 400 L670 380 L690 420 L710 400 L730 420 L750 380 L770 400 L800 400 L820 380 L840 420 L860 400 L880 420 L900 380 L920 400 L950 400 L970 380 L990 420 L1010 400 L1030 420 L1050 380 L1070 400 L1100 400" 
+        stroke="#ffffff" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- Additional pulse details for medical feel -->
+  <circle cx="370" cy="350" r="8" fill="#ffffff"/>
+  <circle cx="390" cy="450" r="8" fill="#ffffff"/>
+  <circle cx="410" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="430" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="450" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="520" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="540" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="560" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="580" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="600" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="620" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="670" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="690" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="710" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="730" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="750" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="770" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="820" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="840" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="860" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="880" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="900" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="920" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="970" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="990" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="1010" cy="400" r="8" fill="#ffffff"/>
+  <circle cx="1030" cy="420" r="8" fill="#ffffff"/>
+  <circle cx="1050" cy="380" r="8" fill="#ffffff"/>
+  <circle cx="1070" cy="400" r="8" fill="#ffffff"/>
+</svg> 

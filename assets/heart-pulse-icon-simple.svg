@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="480" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- Red Heart -->
+  <path d="M512 800c-120-80-240-200-240-320 0-120 80-200 200-200 60 0 120 40 160 80 40-40 100-80 160-80 120 0 200 80 200 200 0 120-120 240-240 320-20 0-40 0-40 0z" 
+        fill="#e74c3c" 
+        stroke="#c0392b" 
+        stroke-width="8"/>
+  
+  <!-- Simplified White ECG Pulse Line -->
+  <path d="M300 400 L400 400 L450 350 L500 450 L550 380 L600 420 L650 400 L700 400 L750 380 L800 420 L850 400 L900 400 L950 380 L1000 420 L1050 400 L1100 400" 
+        stroke="#ffffff" 
+        stroke-width="16" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- Key pulse points as dots -->
+  <circle cx="450" cy="350" r="12" fill="#ffffff"/>
+  <circle cx="500" cy="450" r="12" fill="#ffffff"/>
+  <circle cx="550" cy="380" r="12" fill="#ffffff"/>
+  <circle cx="600" cy="420" r="12" fill="#ffffff"/>
+  <circle cx="750" cy="380" r="12" fill="#ffffff"/>
+  <circle cx="800" cy="420" r="12" fill="#ffffff"/>
+  <circle cx="950" cy="380" r="12" fill="#ffffff"/>
+  <circle cx="1000" cy="420" r="12" fill="#ffffff"/>
+</svg> 

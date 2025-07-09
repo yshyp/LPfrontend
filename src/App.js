@@ -59,6 +59,20 @@ function LocationPermissionScreen({ navigation, route }) {
       const coords = await locationService.getCurrentLocation();
       console.log('Location obtained:', coords);
 
+      // Check if we got valid coordinates
+      if (!locationService.isValidLocation(coords)) {
+        Alert.alert(
+          'Location Error',
+          'Unable to get your current location. Please check your GPS settings and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Retry', onPress: () => requestLocationPermission() }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+
       // Update user location in backend
       if (token && user) {
         try {
@@ -66,6 +80,7 @@ function LocationPermissionScreen({ navigation, route }) {
           console.log('Location updated successfully');
         } catch (error) {
           console.error('Failed to update location:', error);
+          // Continue anyway, location update is not critical
         }
       }
 
@@ -77,7 +92,14 @@ function LocationPermissionScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert('Error', 'Failed to get your location. Please try again.');
+      Alert.alert(
+        'Location Error', 
+        'Failed to get your location. Please check your GPS settings and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Retry', onPress: () => requestLocationPermission() }
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -125,6 +147,7 @@ function DonorDashboardScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [eligibility, setEligibility] = useState({ eligible: true, daysLeft: 0 });
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [acceptedRequests, setAcceptedRequests] = useState([]);
 
   // Fetch eligibility status
   const fetchEligibility = async () => {
@@ -162,6 +185,14 @@ function DonorDashboardScreen({ navigation, route }) {
     setRequestsLoading(true);
     try {
       const coords = await locationService.getCurrentLocation();
+      
+      // Check if we have valid coordinates
+      if (!locationService.isValidLocation(coords)) {
+        console.log('Invalid location coordinates, skipping nearby requests fetch');
+        setNearbyRequests([]);
+        return;
+      }
+
       const response = await requestService.getNearbyRequests(
         coords.longitude,
         coords.latitude,
@@ -171,6 +202,8 @@ function DonorDashboardScreen({ navigation, route }) {
       setNearbyRequests(response.requests || []);
     } catch (error) {
       console.error('Fetch requests error:', error);
+      // Don't show error to user, just set empty array
+      setNearbyRequests([]);
     } finally {
       setRequestsLoading(false);
     }
@@ -184,9 +217,14 @@ function DonorDashboardScreen({ navigation, route }) {
     try {
       await requestService.acceptRequest(requestId);
       Alert.alert('Success', 'You have accepted this blood request. The requester will be notified.');
+      setAcceptedRequests((prev) => [...prev, requestId]);
       fetchNearbyRequests();
       showPostAcceptOptions(requestId);
     } catch (error) {
+      if (error.response?.data?.error === 'You have already accepted this request') {
+        setAcceptedRequests((prev) => [...prev, requestId]);
+        return;
+      }
       console.error('Accept request error:', error);
       Alert.alert('Error', error.response?.data?.error || 'Failed to accept request');
     }
@@ -232,7 +270,7 @@ function DonorDashboardScreen({ navigation, route }) {
       item.location?.coordinates?.[1] || 0,
       item.location?.coordinates?.[0] || 0
     );
-
+    const isAccepted = acceptedRequests.includes(item._id);
     return (
       <Card style={styles.requestCard}>
         <View style={styles.requestHeader}>
@@ -253,10 +291,16 @@ function DonorDashboardScreen({ navigation, route }) {
           <Text style={styles.description}>{item.description}</Text>
         )}
         <Button
-          title={eligibility.eligible ? 'Accept Request' : `Not Eligible (${eligibility.daysLeft}d)`}
+          title={
+            isAccepted
+              ? 'Accepted'
+              : eligibility.eligible
+                ? 'Accept Request'
+                : `Not Eligible (${eligibility.daysLeft}d)`
+          }
           onPress={() => acceptRequest(item._id)}
           style={styles.acceptButton}
-          disabled={!eligibility.eligible}
+          disabled={isAccepted || !eligibility.eligible}
         />
       </Card>
     );
@@ -315,25 +359,7 @@ function DonorDashboardScreen({ navigation, route }) {
         )}
       </View>
 
-      <View style={styles.testSection}>
-        <Text style={styles.sectionTitle}>Debug Tools</Text>
-        <Button
-          title="Test Notification"
-          onPress={async () => {
-            try {
-              await notificationService.testNotification(
-                '🧪 Test Notification',
-                'This is a test notification from LifePulse!',
-                { type: 'test' }
-              );
-              Alert.alert('Success', 'Test notification sent!');
-            } catch (error) {
-              Alert.alert('Error', error.response?.data?.error || 'Failed to send test notification');
-            }
-          }}
-          style={styles.testButton}
-        />
-      </View>
+
 
       <View style={styles.requestsSection}>
         <View style={styles.sectionHeader}>
@@ -434,6 +460,19 @@ function RequesterDashboardScreen({ navigation, route }) {
     setLoading(true);
     try {
       const coords = await locationService.getCurrentLocation();
+      
+      // Check if we have valid coordinates
+      if (!locationService.isValidLocation(coords)) {
+        Alert.alert(
+          'Location Required', 
+          'Please enable location access to create a blood request. This helps donors find your request.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => locationService.openSettings() }
+          ]
+        );
+        return;
+      }
       
       const requestData = {
         ...createForm,
@@ -1178,16 +1217,7 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 12,
   },
-  testSection: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    margin: 16,
-    borderRadius: 12,
-  },
-  testButton: {
-    backgroundColor: '#FF9500',
-    marginTop: 8,
-  },
+
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

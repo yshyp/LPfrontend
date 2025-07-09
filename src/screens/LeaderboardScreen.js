@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, StatusBar } from 'react-native';
 import userService from '../services/userService';
 import Card from '../components/common/Card';
 import ECGPulseOverlay from '../components/common/ECGPulseOverlay';
@@ -39,7 +39,9 @@ export default function LeaderboardScreen() {
   const renderItem = ({ item, index }) => (
     <Card style={styles.card}>
       <View style={styles.row}>
-        <Text style={styles.rank}>{index + 1}</Text>
+        <View style={[styles.rankContainer, index < 3 && styles.topRank]}>
+          <Text style={[styles.rank, index < 3 && styles.topRankText]}>{index + 1}</Text>
+        </View>
         <View style={styles.info}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.bloodGroup}>Blood Group: {item.bloodGroup}</Text>
@@ -54,94 +56,167 @@ export default function LeaderboardScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.loadingText}>Loading leaderboard...</Text>
+      <View style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8F8F8" />
+        <View style={styles.center}>
+          <Text style={styles.loadingText}>Loading leaderboard...</Text>
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🏆 Top Donors Leaderboard</Text>
-      <FlatList
-        data={donors}
-        renderItem={renderItem}
-        keyExtractor={(_, idx) => idx.toString()}
-        ListEmptyComponent={<Text style={styles.empty}>No donors yet.</Text>}
-      />
-      
-      {/* ECG Pulse Overlay Loader */}
-      <ECGPulseOverlay 
-        visible={loading}
-        text="Loading leaderboard..."
-      />
+    <View style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F8F8" />
+      <View style={styles.container}>
+        <View style={[styles.header, { marginTop: 40 }]}> {/* Fixed margin to push header down */}
+          <Text style={styles.title}>🏆 Top Donors Leaderboard</Text>
+          <Text style={styles.subtitle}>Celebrating our lifesaving heroes</Text>
+        </View>
+        
+        <FlatList
+          data={donors}
+          renderItem={renderItem}
+          keyExtractor={(_, idx) => idx.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>No donors yet</Text>
+              <Text style={styles.emptySubtitle}>Be the first to make a difference!</Text>
+            </View>
+          }
+        />
+        
+        {/* ECG Pulse Overlay Loader */}
+        <ECGPulseOverlay 
+          visible={loading}
+          text="Loading leaderboard..."
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8F8F8',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8F8F8',
-    padding: 16,
+  },
+  header: {
+    paddingHorizontal: 20,
+    // marginTop is set adaptively
+    paddingBottom: 8,
+    backgroundColor: '#F8F8F8',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
     textAlign: 'center',
+    color: '#1C1C1E',
+    marginBottom: 1,
+  },
+  subtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: '#8E8E93',
+  },
+  listContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
   card: {
     marginBottom: 12,
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  rankContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  topRank: {
+    backgroundColor: '#FFD700',
+  },
   rank: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
-    width: 32,
-    textAlign: 'center',
-    color: '#FFD700',
+    color: '#666',
+  },
+  topRankText: {
+    color: '#1C1C1E',
   },
   info: {
-    flex: 2,
-    marginLeft: 12,
+    flex: 1,
+    marginRight: 12,
   },
   name: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
   },
   bloodGroup: {
     fontSize: 14,
-    color: '#888',
+    color: '#8E8E93',
   },
   stats: {
     alignItems: 'flex-end',
   },
   donations: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#007AFF',
+    marginBottom: 4,
   },
   badge: {
     fontSize: 16,
-    marginTop: 4,
+    fontWeight: '500',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8F8F8',
   },
-  empty: {
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#8E8E93',
     textAlign: 'center',
-    color: '#888',
-    marginTop: 32,
-    fontSize: 16,
   },
   loadingText: {
     fontSize: 16,
