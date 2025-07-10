@@ -29,6 +29,7 @@ import Button from './components/common/Button';
 import Input from './components/common/Input';
 import Card from './components/common/Card';
 import ECGPulseOverlay from './components/common/ECGPulseOverlay';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 const Stack = createNativeStackNavigator();
 
@@ -898,9 +899,11 @@ function MainApp() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <MainApp />
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <MainApp />
+      </UserProvider>
+    </ErrorBoundary>
   );
 }
 
