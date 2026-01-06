@@ -1,10 +1,14 @@
 // API Configuration
-const isDevelopment = true; // Use local development server
+const isDevelopment = true; // Use production server
 const PRODUCTION_URL = 'https://lpbackend-w3g7.onrender.com';
-const LOCAL_URL = 'http://192.168.1.6:5000'; // Replace with your local IP
+const LOCAL_URL = 'http://10.0.2.2:5000'; // Android emulator special IP for host machine
+
+const BASE_URL = isDevelopment ? LOCAL_URL : PRODUCTION_URL;
+
+console.log('API BASE_URL:', BASE_URL); // Debug: print the API base URL
 
 export const API_CONFIG = {
-  BASE_URL: isDevelopment ? LOCAL_URL : PRODUCTION_URL,
+  BASE_URL: BASE_URL,
   TIMEOUT: 10000,
   HEADERS: {
     'Content-Type': 'application/json',

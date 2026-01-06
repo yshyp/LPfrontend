@@ -1,12 +1,17 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import FluidBackground from '../../components/common/FluidBackground';
 import ECGPulseOverlay from '../../components/common/ECGPulseOverlay';
 import authService from '../../services/authService';
 import { UserContext } from '../../context/UserContext';
+import { useTheme } from '../../context/ThemeContext';
+import { SHADOWS } from '../../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 const LoginScreen = ({ navigation }) => {
+  const { colors, isDark, toggleTheme } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,13 +27,9 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      // Use the unified verification system
       await authService.sendVerification(identifier.trim(), 'LOGIN', 'AUTO', 'User');
-      
       setOtpSent(true);
-      setResendCooldown(30); // 30 second cooldown
-      
-      // Start countdown
+      setResendCooldown(30);
       const countdown = setInterval(() => {
         setResendCooldown(prev => {
           if (prev <= 1) {
@@ -46,22 +47,14 @@ const LoginScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error('Send OTP error:', error);
-      
       if (error.response?.status === 404) {
         Alert.alert(
-          'Account Not Found', 
+          'Account Not Found',
           'No account found with this phone number or email. Would you like to create a new account?',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Create Account', onPress: () => navigation.navigate('Register') }
           ]
-        );
-      } else if (error.response?.status === 429) {
-        const retryAfter = error.response?.data?.retryAfter || '15 minutes';
-        Alert.alert(
-          '⏰ Too Many Attempts',
-          `Too many requests. Please wait ${retryAfter} before trying again.`,
-          [{ text: 'OK', style: 'default' }]
         );
       } else {
         Alert.alert('Error', error.response?.data?.error || 'Failed to send OTP. Please try again.');
@@ -80,13 +73,9 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const result = await authService.verifyCode(identifier.trim(), otp.trim(), 'LOGIN');
-      
       if (result.user && result.token) {
         setUser(result.user, result.token);
-        
-        // Determine which dashboard to navigate to based on user role
         const dashboardRoute = result.user.role === 'DONOR' ? 'DonorDashboard' : 'RequesterDashboard';
-        
         Alert.alert(
           'Login Successful!',
           'Welcome back to LifePulse!',
@@ -103,19 +92,7 @@ const LoginScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Verify OTP error:', error);
-      
-      if (error.response?.status === 400) {
-        Alert.alert('Invalid OTP', 'The OTP you entered is incorrect. Please try again.');
-      } else if (error.response?.status === 429) {
-        const retryAfter = error.response?.data?.retryAfter || '15 minutes';
-        Alert.alert(
-          '⏰ Too Many Attempts',
-          `Too many verification attempts. Please wait ${retryAfter} before trying again.`,
-          [{ text: 'OK', style: 'default' }]
-        );
-      } else {
-        Alert.alert('Error', error.response?.data?.error || 'Verification failed. Please try again.');
-      }
+      Alert.alert('Error', error.response?.data?.error || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -123,11 +100,9 @@ const LoginScreen = ({ navigation }) => {
 
   const handleResendOTP = async () => {
     if (resendCooldown > 0) return;
-
     setLoading(true);
     try {
       await authService.resendVerification(identifier.trim(), 'LOGIN', 'AUTO');
-      
       setResendCooldown(30);
       const countdown = setInterval(() => {
         setResendCooldown(prev => {
@@ -138,7 +113,6 @@ const LoginScreen = ({ navigation }) => {
           return prev - 1;
         });
       }, 1000);
-
       Alert.alert('OTP Resent!', 'A new verification code has been sent.');
     } catch (error) {
       console.error('Resend OTP error:', error);
@@ -155,206 +129,207 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <FluidBackground>
+      <TouchableOpacity
+        style={styles.themeToggle}
+        onPress={toggleTheme}
+      >
+        <Ionicons
+          name={isDark ? "sunny" : "moon"}
+          size={24}
+          color={isDark ? "#FFD700" : colors.text}
+        />
+      </TouchableOpacity>
+
       <View style={styles.header}>
-        <Text style={styles.title}>🩸 LifePulse</Text>
-        <Text style={styles.subtitle}>Blood Donor Network</Text>
+        <Text style={[styles.title, { color: colors.primary[0] }]}>🩸 LifePulse</Text>
+        <Text style={[styles.subtitle, { color: colors.text }]}>Welcome Back</Text>
+        <Text style={[styles.description, { color: colors.textSecondary }]}>
+          Sign in to continue managing your donations and requests.
+        </Text>
       </View>
 
-      <View style={styles.form}>
+      <View style={[styles.formCard, { backgroundColor: isDark ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)' }]}>
         {!otpSent ? (
-          // Step 1: Enter phone/email
           <>
             <Input
               label="Phone Number or Email"
               value={identifier}
               onChangeText={setIdentifier}
-              placeholder="Enter your phone number or email"
-              keyboardType="default"
+              placeholder="e.g. +1234567890 or email@example.com"
+              keyboardType="email-address"
               autoCapitalize="none"
+              icon="person-outline"
             />
-
             {loading ? (
               <View style={styles.loaderContainer}>
-                <Text style={styles.loadingText}>Sending verification code...</Text>
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Sending verification code...</Text>
               </View>
             ) : (
               <Button
                 title="Send Verification Code"
                 onPress={handleSendOTP}
-                style={styles.sendButton}
+                style={styles.actionButton}
               />
             )}
           </>
         ) : (
-          // Step 2: Enter OTP
           <>
-            <View style={styles.otpInfo}>
-              <Text style={styles.otpInfoText}>
-                We've sent a verification code to:
+            <View style={[styles.otpInfo, { backgroundColor: colors.background }]}>
+              <Text style={[styles.otpInfoText, { color: colors.textSecondary }]}>
+                Code sent to
               </Text>
-              <Text style={styles.identifierText}>{identifier}</Text>
+              <Text style={[styles.identifierText, { color: colors.text }]}>{identifier}</Text>
             </View>
 
             <Input
               label="Verification Code"
               value={otp}
               onChangeText={setOtp}
-              placeholder="Enter 6-digit code"
-              keyboardType="numeric"
+              placeholder="000000"
+              keyboardType="number-pad"
               maxLength={6}
+              icon="key-outline"
+              style={{ textAlign: 'center' }}
             />
 
             <View style={styles.resendContainer}>
-              <TouchableOpacity 
-                onPress={handleResendOTP} 
+              <TouchableOpacity
+                onPress={handleResendOTP}
                 disabled={resendCooldown > 0}
-                style={[styles.resendButton, resendCooldown > 0 && styles.resendButtonDisabled]}
               >
-                <Text style={[styles.resendText, resendCooldown > 0 && styles.resendTextDisabled]}>
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                <Text style={[styles.resendText, { color: resendCooldown > 0 ? colors.textSecondary : colors.primary[0] }]}>
+                  {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend Code'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {loading ? (
               <View style={styles.loaderContainer}>
-                <Text style={styles.loadingText}>Verifying code...</Text>
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Verifying code...</Text>
               </View>
             ) : (
               <Button
                 title="Verify & Login"
                 onPress={handleVerifyOTP}
-                style={styles.verifyButton}
+                style={styles.actionButton}
               />
             )}
 
             <TouchableOpacity onPress={resetForm} style={styles.changeNumberButton}>
-              <Text style={styles.changeNumberText}>Change Phone/Email</Text>
+              <Text style={[styles.changeNumberText, { color: colors.textSecondary }]}>Change Phone/Email</Text>
             </TouchableOpacity>
           </>
         )}
 
-        <View style={styles.divider}>
-          <Text style={styles.dividerText}>Don't have an account?</Text>
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.textSecondary }]}>New to LifePulse? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={[styles.linkText, { color: colors.primary[0] }]}>Create Account</Text>
+          </TouchableOpacity>
         </View>
-
-        <Button
-          title="Create New Account"
-          onPress={() => navigation.navigate('Register')}
-          variant="secondary"
-        />
       </View>
-      
-      {/* ECG Pulse Overlay Loader */}
-      <ECGPulseOverlay 
+
+      <ECGPulseOverlay
         visible={loading}
-        text={otpSent ? "Verifying code..." : "Sending verification code..."}
+        text={otpSent ? "Verifying..." : "Sending code..."}
       />
-    </ScrollView>
+    </FluidBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  content: {
-    flexGrow: 1,
-    padding: 20,
+  themeToggle: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   header: {
     alignItems: 'center',
-    marginTop: 60,
     marginBottom: 40,
+    marginTop: 20,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
-    marginBottom: 8,
+    fontWeight: '800',
+    marginBottom: 10,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#8E8E93',
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
   },
-  form: {
-    flex: 1,
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  formCard: {
+    borderRadius: 30,
+    padding: 24,
+    ...SHADOWS.medium,
+  },
+  actionButton: {
+    marginTop: 10,
+    marginBottom: 20,
   },
   otpInfo: {
-    backgroundColor: '#E3F2FD',
-    padding: 16,
-    borderRadius: 12,
+    alignItems: 'center',
     marginBottom: 24,
+    padding: 16,
+    borderRadius: 20,
   },
   otpInfoText: {
     fontSize: 14,
-    color: '#1976D2',
-    textAlign: 'center',
     marginBottom: 4,
   },
   identifierText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1976D2',
-    textAlign: 'center',
+    fontWeight: '700',
   },
   resendContainer: {
     alignItems: 'center',
     marginBottom: 24,
   },
-  resendButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  resendButtonDisabled: {
-    opacity: 0.5,
-  },
   resendText: {
-    color: '#FF3B30',
     fontSize: 14,
-    fontWeight: '500',
-  },
-  resendTextDisabled: {
-    color: '#8E8E93',
-  },
-  sendButton: {
-    marginBottom: 24,
-  },
-  verifyButton: {
-    marginBottom: 16,
+    fontWeight: '600',
   },
   changeNumberButton: {
     alignSelf: 'center',
-    paddingVertical: 8,
-    marginBottom: 24,
+    marginBottom: 10,
   },
   changeNumberText: {
-    color: '#8E8E93',
     fontSize: 14,
-    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   loaderContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 20,
   },
-  divider: {
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerText: {
-    color: '#8E8E93',
-    fontSize: 16,
-  },
   loadingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
-    textAlign: 'center',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  footerText: {
+    fontSize: 15,
+  },
+  linkText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 
-export default LoginScreen; 
+export default LoginScreen;

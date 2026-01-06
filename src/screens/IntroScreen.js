@@ -6,224 +6,257 @@ import {
   Animated,
   Dimensions,
   TouchableOpacity,
-  Image,
+  Platform,
+  SafeAreaView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import welcomeService from '../services/welcomeService';
 
 const { width, height } = Dimensions.get('window');
 
 const IntroScreen = ({ navigation }) => {
+  const { colors, isDark } = useTheme();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const heartBeatAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Blob animations
+  const blob1Anim = useRef(new Animated.Value(0)).current;
+  const blob2Anim = useRef(new Animated.Value(0)).current;
+  const contentFadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Animation for blobs
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blob1Anim, {
+          toValue: 1,
+          duration: 6000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(blob1Anim, {
+          toValue: 0,
+          duration: 6000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blob2Anim, {
+          toValue: 1,
+          duration: 7000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(blob2Anim, {
+          toValue: 0,
+          duration: 7000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const slideTransition = (callback) => {
+    Animated.sequence([
+      Animated.timing(contentFadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentFadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      })
+    ]).start();
+
+    // Execute state change in middle of fade
+    setTimeout(callback, 200);
+  };
+
+  const blob1TranslateY = blob1Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -30],
+  });
+
+  const blob2TranslateY = blob2Anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 40],
+  });
+
+  const blob1Scale = blob1Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.1, 1],
+  });
+
+  const blob2Scale = blob2Anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.2, 1],
+  });
 
   const slides = [
     {
-      title: '🩸 LifePulse',
+      id: 1,
+      title: 'Welcome to LifePulse',
       subtitle: 'Connecting Hearts, Saving Lives',
-      description: 'Join our community of blood donors and recipients to make a difference in someone\'s life.',
-      icon: '❤️',
-      color: ['#FF6B6B', '#FF8E8E']
+      description: 'Join our community of blood donors and recipients. Every drop counts in making a difference.',
+      icon: 'heart-circle',
+      iconColor: '#FF6B6B',
+      blob1Color: isDark ? '#4A0E0E' : '#FFD6D6',
+      blob2Color: isDark ? '#0E1F4A' : '#D6E4FF',
     },
     {
-      title: 'Quick & Easy',
-      subtitle: 'Find Donors Nearby',
-      description: 'Locate blood donors in your area instantly. Our smart matching system connects you with compatible donors.',
-      icon: '📍',
-      color: ['#4ECDC4', '#6EE7DF']
+      id: 2,
+      title: 'Find Donors Nearby',
+      subtitle: 'Quick & Efficient',
+      description: 'Locate compatible blood donors in your area instantly with our smart matching system.',
+      icon: 'location',
+      iconColor: '#4ECDC4',
+      blob1Color: isDark ? '#0E4A45' : '#D6FFF9',
+      blob2Color: isDark ? '#4A3B0E' : '#FFEFD6',
     },
     {
+      id: 3,
       title: 'Real-time Updates',
-      subtitle: 'Stay Connected',
-      description: 'Get instant notifications when someone needs blood or when your request is accepted.',
-      icon: '🔔',
-      color: ['#45B7D1', '#67C9E3']
+      subtitle: 'Stay Informed',
+      description: 'Get instant notifications for blood requests, acceptances, and urgent needs in your community.',
+      icon: 'notifications',
+      iconColor: '#FFD93D',
+      blob1Color: isDark ? '#4A3B0E' : '#FFEFD6',
+      blob2Color: isDark ? '#4A0E0E' : '#FFD6D6',
     },
     {
+      id: 4,
       title: 'Safe & Secure',
-      subtitle: 'Your Privacy Matters',
-      description: 'Your personal information is protected. We ensure secure and confidential blood donation matching.',
-      icon: '🔒',
-      color: ['#96CEB4', '#B8E0C8']
+      subtitle: 'Privacy First',
+      description: 'Your data is protected with industry-standard security. Donate and request with confidence.',
+      icon: 'shield-checkmark',
+      iconColor: '#6C5CE7',
+      blob1Color: isDark ? '#1F0E4A' : '#E0D6FF',
+      blob2Color: isDark ? '#0E4A45' : '#D6FFF9',
     }
   ];
 
-  // Heart beat animation
-  useEffect(() => {
-    const heartBeat = () => {
-      Animated.sequence([
-        Animated.timing(heartBeatAnim, {
-          toValue: 1.2,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(heartBeatAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setTimeout(heartBeat, 1000);
-      });
-    };
-    heartBeat();
-  }, [heartBeatAnim]);
-
-  // Fade in animation
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
-  // Slide animation
-  useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: currentSlide,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [currentSlide, slideAnim]);
-
-  const nextSlide = () => {
+  const handleNext = () => {
     if (currentSlide < slides.length - 1) {
-      setCurrentSlide(currentSlide + 1);
+      slideTransition(() => setCurrentSlide(currentSlide + 1));
     } else {
-      // Navigate to login screen
-      navigation.replace('Login');
+      completeIntro();
     }
   };
 
-  const skipIntro = () => {
+  const completeIntro = async () => {
+    await welcomeService.markWelcomeAsSeen();
     navigation.replace('Login');
   };
 
-  const renderHeartBeat = () => (
-    <Animated.View
-      style={[
-        styles.heartContainer,
-        {
-          transform: [{ scale: heartBeatAnim }],
-        },
-      ]}
-    >
-      <Text style={styles.heartIcon}>❤️</Text>
-    </Animated.View>
-  );
-
-  const renderSlide = (slide, index) => (
-    <Animated.View
-      key={index}
-      style={[
-        styles.slide,
-        {
-          opacity: fadeAnim,
-          transform: [
-            {
-              translateX: slideAnim.interpolate({
-                inputRange: [index - 1, index, index + 1],
-                outputRange: [width, 0, -width],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <LinearGradient
-        colors={slide.color}
-        style={styles.slideGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.slideContent}>
-          <Text style={styles.slideIcon}>{slide.icon}</Text>
-          <Text style={styles.slideTitle}>{slide.title}</Text>
-          <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
-          <Text style={styles.slideDescription}>{slide.description}</Text>
-        </View>
-      </LinearGradient>
-    </Animated.View>
-  );
-
-  const renderDots = () => (
-    <View style={styles.dotsContainer}>
-      {slides.map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.dot,
-            {
-              backgroundColor: index === currentSlide ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)',
-              width: index === currentSlide ? 20 : 8,
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Background with floating hearts */}
-      <View style={styles.background}>
-        {[...Array(20)].map((_, index) => (
-          <Animated.Text
-            key={index}
-            style={[
-              styles.floatingHeart,
-              {
-                left: Math.random() * width,
-                top: Math.random() * height,
-                opacity: fadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 0.3],
-                }),
-                transform: [
-                  {
-                    translateY: fadeAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [50, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            ❤️
-          </Animated.Text>
-        ))}
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Dynamic Background Blobs */}
+      <Animated.View
+        style={[
+          styles.blob,
+          styles.blob1,
+          {
+            backgroundColor: slides[currentSlide].blob1Color,
+            transform: [
+              { translateY: blob1TranslateY },
+              { scale: blob1Scale }
+            ]
+          }
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.blob,
+          styles.blob2,
+          {
+            backgroundColor: slides[currentSlide].blob2Color,
+            transform: [
+              { translateY: blob2TranslateY },
+              { scale: blob2Scale }
+            ]
+          }
+        ]}
+      />
 
-      {/* Main content */}
-      <View style={styles.content}>
-        {/* Header with heart beat */}
-        <View style={styles.header}>
-          {renderHeartBeat()}
-          <Text style={styles.appName}>LifePulse</Text>
-          <TouchableOpacity onPress={skipIntro} style={styles.skipButton}>
-            <Text style={styles.skipText}>Skip</Text>
+      {/* Glassmorphism Content Card */}
+      <View style={styles.contentContainer}>
+        <View style={styles.topContainer}>
+          <TouchableOpacity
+            onPress={completeIntro}
+            style={styles.skipButton}
+          >
+            <Text style={[styles.skipText, { color: colors.subtext }]}>Skip</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Slides */}
-        <View style={styles.slidesContainer}>
-          {slides.map((slide, index) => renderSlide(slide, index))}
-        </View>
+        <Animated.View style={[
+          styles.cardContainer,
+          {
+            opacity: contentFadeAnim,
+            transform: [{ scale: contentFadeAnim }]
+          }
+        ]}>
+          <View style={[styles.glassCard, { backgroundColor: isDark ? 'rgba(30,30,30,0.7)' : 'rgba(255,255,255,0.7)' }]}>
+            <View style={styles.iconContainer}>
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? '#000' : '#FFF' }]}>
+                <Ionicons
+                  name={slides[currentSlide].icon}
+                  size={60}
+                  color={slides[currentSlide].iconColor}
+                />
+              </View>
+            </View>
 
-        {/* Bottom section */}
-        <View style={styles.bottomSection}>
-          {renderDots()}
-          
-          <TouchableOpacity onPress={nextSlide} style={styles.nextButton}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {slides[currentSlide].title}
+            </Text>
+
+            <Text style={[styles.subtitle, { color: colors.primary }]}>
+              {slides[currentSlide].subtitle}
+            </Text>
+
+            <Text style={[styles.description, { color: colors.subtext }]}>
+              {slides[currentSlide].description}
+            </Text>
+
+            {/* Pagination Dots */}
+            <View style={styles.paginationContainer}>
+              {slides.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor: index === currentSlide ? colors.primary : colors.border,
+                      width: index === currentSlide ? 24 : 8,
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Bottom Action Button */}
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: colors.primary }]}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
             <Text style={styles.nextButtonText}>
               {currentSlide === slides.length - 1 ? 'Get Started' : 'Next'}
             </Text>
-            <Text style={styles.nextButtonIcon}>
-              {currentSlide === slides.length - 1 ? '🚀' : '→'}
-            </Text>
+            <Ionicons
+              name={currentSlide === slides.length - 1 ? "rocket-outline" : "arrow-forward"}
+              size={24}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -234,144 +267,137 @@ const IntroScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
-  },
-  background: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  floatingHeart: {
-    position: 'absolute',
-    fontSize: 20,
-    color: 'rgba(255, 107, 107, 0.3)',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-  },
-  heartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heartIcon: {
-    fontSize: 40,
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    flex: 1,
-    textAlign: 'center',
-  },
-  skipButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  skipText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  slidesContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  slide: {
-    position: 'absolute',
-    width: width - 40,
-    height: height * 0.5,
-    alignSelf: 'center',
-    borderRadius: 20,
     overflow: 'hidden',
   },
-  slideGradient: {
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.6,
+  },
+  blob1: {
+    width: width * 1.2,
+    height: width * 1.2,
+    top: -width * 0.4,
+    right: -width * 0.3,
+  },
+  blob2: {
+    width: width * 1.0,
+    height: width * 1.0,
+    bottom: -width * 0.4,
+    left: -width * 0.3,
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 24,
+    zIndex: 10,
+  },
+  topContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: Platform.OS === 'ios' ? 40 : 20,
+    marginBottom: 20,
+  },
+  skipButton: {
+    padding: 10,
+  },
+  skipText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cardContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 40,
+  },
+  glassCard: {
+    width: '100%',
     padding: 30,
-  },
-  slideContent: {
+    borderRadius: 30,
     alignItems: 'center',
-    maxWidth: 280,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  slideIcon: {
-    fontSize: 80,
-    marginBottom: 20,
+  iconContainer: {
+    marginBottom: 24,
   },
-  slideTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  slideSubtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 15,
-    opacity: 0.9,
-  },
-  slideDescription: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 24,
-    opacity: 0.8,
-  },
-  bottomSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 10,
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dot: {
     height: 8,
     borderRadius: 4,
     marginHorizontal: 4,
   },
+  bottomContainer: {
+    marginBottom: Platform.OS === 'ios' ? 20 : 10,
+  },
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    paddingVertical: 18,
+    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
   },
   nextButtonText: {
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',
     marginRight: 10,
-  },
-  nextButtonIcon: {
-    fontSize: 20,
   },
 });
 
-export default IntroScreen; 
+export default IntroScreen;

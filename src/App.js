@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, FlatList, Switch, RefreshControl, Modal, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, FlatList, Switch, RefreshControl, Modal, Platform, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { UserProvider, useUser } from './context/UserContext';
-import { useNavigationContainerRef } from '@react-navigation/native';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { useNavigationContainerRef, DefaultTheme } from '@react-navigation/native';
 
 // Import screens
 import LoginScreen from './screens/auth/LoginScreen';
@@ -23,12 +24,14 @@ import userService from './services/userService';
 import requestService from './services/requestService';
 import locationService from './services/locationService';
 import notificationService from './services/notificationService';
+import welcomeService from './services/welcomeService';
 
 // Import components
 import Button from './components/common/Button';
 import Input from './components/common/Input';
 import Card from './components/common/Card';
 import ECGPulseOverlay from './components/common/ECGPulseOverlay';
+import HeartbeatLoader from './components/common/HeartbeatLoader';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 const Stack = createNativeStackNavigator();
@@ -40,10 +43,10 @@ function LocationPermissionScreen({ navigation, route }) {
 
   const requestLocationPermission = async () => {
     setLoading(true);
-    
+
     try {
       const hasPermission = await locationService.requestPermission();
-      
+
       if (!hasPermission) {
         Alert.alert(
           'Location Permission Required',
@@ -94,7 +97,7 @@ function LocationPermissionScreen({ navigation, route }) {
     } catch (error) {
       console.error('Location error:', error);
       Alert.alert(
-        'Location Error', 
+        'Location Error',
         'Failed to get your location. Please check your GPS settings and try again.',
         [
           { text: 'Cancel', style: 'cancel' },
@@ -113,14 +116,14 @@ function LocationPermissionScreen({ navigation, route }) {
         <Text style={styles.description}>
           LifePulse needs your location to connect you with nearby blood donors and requests.
         </Text>
-        
+
         <Button
           title="Enable Location Access"
           onPress={requestLocationPermission}
           loading={loading}
           style={styles.locationButton}
         />
-        
+
         <Button
           title="Skip for now"
           onPress={() => {
@@ -149,6 +152,11 @@ function DonorDashboardScreen({ navigation, route }) {
   const [eligibility, setEligibility] = useState({ eligible: true, daysLeft: 0 });
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [acceptedRequests, setAcceptedRequests] = useState([]);
+  const [searchRadius, setSearchRadius] = useState(20); // Default 20km
+  const [bloodTypeFilter, setBloodTypeFilter] = useState(null); // Null means all/compatible
+
+  const radiusOptions = [5, 10, 20, 50, 100];
+  const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   // Fetch eligibility status
   const fetchEligibility = async () => {
@@ -186,7 +194,7 @@ function DonorDashboardScreen({ navigation, route }) {
     setRequestsLoading(true);
     try {
       const coords = await locationService.getCurrentLocation();
-      
+
       // Check if we have valid coordinates
       if (!locationService.isValidLocation(coords)) {
         console.log('Invalid location coordinates, skipping nearby requests fetch');
@@ -197,8 +205,11 @@ function DonorDashboardScreen({ navigation, route }) {
       const response = await requestService.getNearbyRequests(
         coords.longitude,
         coords.latitude,
-        20000, // 20km radius
-        user?.bloodGroup
+        searchRadius * 1000, // Convert km to meters
+        bloodTypeFilter || user?.bloodGroup // Use filter if set, otherwise default to user's group (or null for all?)
+        // Actually, usually we want to see ALL requests compatible. 
+        // But for this UI, if user picks a drop, we filter by that.
+        // If no drop picked, maybe show all?
       );
       setNearbyRequests(response.requests || []);
     } catch (error) {
@@ -236,7 +247,7 @@ function DonorDashboardScreen({ navigation, route }) {
       'Next Steps',
       'What would you like to do?',
       [
-        { text: 'Share Contact Details', onPress: () => {/* logic for sharing contact details */} },
+        { text: 'Share Contact Details', onPress: () => {/* logic for sharing contact details */ } },
         { text: 'Chat', onPress: () => navigation.navigate('Chat', { requestId, user }) },
         { text: 'Cancel', style: 'cancel' }
       ]
@@ -253,7 +264,7 @@ function DonorDashboardScreen({ navigation, route }) {
   useEffect(() => {
     fetchNearbyRequests();
     fetchEligibility();
-  }, []);
+  }, [searchRadius, bloodTypeFilter]); // Refetch when filters change
 
   const renderSkeleton = () => (
     <Card style={styles.requestCard}>
@@ -273,34 +284,92 @@ function DonorDashboardScreen({ navigation, route }) {
     );
     const isAccepted = acceptedRequests.includes(item._id);
     return (
-      <Card style={styles.requestCard}>
-        <View style={styles.requestHeader}>
-          <Ionicons name="water" size={24} color="#FF3B30" style={{ marginRight: 8 }} />
-          <Text style={styles.bloodGroup}>{item.bloodGroup}</Text>
-          <View style={[styles.urgencyBadge, styles[`urgency${item.urgency}`]]}>
+      <Card style={{
+        padding: 16,
+        marginBottom: 16,
+        borderRadius: 16,
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F2F2F7'
+      }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: '#FFF0F0',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12
+            }}>
+              <Ionicons name="water" size={24} color="#FF3B30" />
+            </View>
+            <View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#1C1C1E' }}>{item.bloodGroup} Blood</Text>
+              <Text style={{ fontSize: 14, color: '#666' }}>{item.hospitalName}</Text>
+            </View>
+          </View>
+          <View style={[
+            styles.urgencyBadge,
+            styles[`urgency${item.urgency}`],
+            { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }
+          ]}>
             <Text style={styles.urgencyText}>{item.urgency}</Text>
           </View>
         </View>
-        <Text style={styles.hospitalName}>{item.hospitalName}</Text>
-        <Text style={styles.hospitalAddress}>{item.hospitalAddress}</Text>
-        <View style={styles.requestDetails}>
-          <Text style={styles.detailText}>Units: {item.units}</Text>
-          <Text style={styles.detailText}>Distance: {locationService.formatDistance(distance)}</Text>
-          <Text style={styles.detailText}>Required by: {new Date(item.requiredBy).toLocaleDateString()}</Text>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <Ionicons name="location-outline" size={16} color="#8E8E93" style={{ marginRight: 4 }} />
+          <Text style={{ fontSize: 13, color: '#8E8E93', flex: 1 }} numberOfLines={1}>{item.hospitalAddress}</Text>
         </View>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#F9F9F9', padding: 12, borderRadius: 12 }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: '#8E8E93' }}>Distance</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1C1C1E' }}>{locationService.formatDistance(distance)}</Text>
+          </View>
+          <View style={{ width: 1, backgroundColor: '#E5E5EA' }} />
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: '#8E8E93' }}>Units</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1C1C1E' }}>{item.units}</Text>
+          </View>
+          <View style={{ width: 1, backgroundColor: '#E5E5EA' }} />
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: '#8E8E93' }}>Time Left</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1C1C1E' }}>{item.requiredBy ? new Date(item.requiredBy).toLocaleDateString() : 'ASAP'}</Text>
+          </View>
+        </View>
+
         {item.description && (
-          <Text style={styles.description}>{item.description}</Text>
+          <Text style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: 18 }} numberOfLines={2}>
+            {item.description}
+          </Text>
         )}
+
         <Button
           title={
             isAccepted
               ? 'Accepted'
               : eligibility.eligible
-                ? 'Accept Request'
-                : `Not Eligible (${eligibility.daysLeft}d)`
+                ? 'Donate Now'
+                : `Available in ${eligibility.daysLeft}d`
           }
           onPress={() => acceptRequest(item._id)}
-          style={styles.acceptButton}
+          style={{
+            borderRadius: 12,
+            backgroundColor: isAccepted ? '#34C759' : (!eligibility.eligible ? '#E5E5EA' : '#FF3B30'),
+            paddingVertical: 12
+          }}
+          textStyle={{
+            color: !eligibility.eligible ? '#8E8E93' : '#fff',
+            fontWeight: '600'
+          }}
           disabled={isAccepted || !eligibility.eligible}
         />
       </Card>
@@ -363,13 +432,108 @@ function DonorDashboardScreen({ navigation, route }) {
 
 
       <View style={styles.requestsSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Blood Requests</Text>
+
+        {/* Blood Type Filter - Visual Drops */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1C1C1E', marginBottom: 16, marginLeft: 4 }}>
+            Blood Requests near you!
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 8 }}>
+            <TouchableOpacity
+              onPress={() => setBloodTypeFilter(null)}
+              style={{ alignItems: 'center', marginRight: 16 }}
+            >
+              <View style={{
+                width: 50, height: 50, borderRadius: 25,
+                backgroundColor: !bloodTypeFilter ? '#FF3B30' : '#F2F2F7',
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: !bloodTypeFilter ? '#FF3B30' : '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: !bloodTypeFilter ? 0.3 : 0,
+                shadowRadius: 8,
+                elevation: !bloodTypeFilter ? 6 : 0,
+                borderWidth: 1, borderColor: '#fff'
+              }}>
+                <Ionicons name="grid" size={24} color={!bloodTypeFilter ? '#fff' : '#8E8E93'} />
+              </View>
+              <Text style={{ marginTop: 8, fontSize: 12, fontWeight: '600', color: !bloodTypeFilter ? '#FF3B30' : '#8E8E93' }}>All</Text>
+            </TouchableOpacity>
+
+            {bloodGroups.map(bg => {
+              const isActive = bloodTypeFilter === bg;
+              return (
+                <TouchableOpacity
+                  key={bg}
+                  onPress={() => setBloodTypeFilter(isActive ? null : bg)}
+                  style={{ alignItems: 'center', marginRight: 16 }}
+                >
+                  <View style={{
+                    width: 50, height: 60, // Elongated for drop shape
+                    justifyContent: 'center', alignItems: 'center',
+                  }}>
+                    {/* Background Drop Shape using Icon */}
+                    <Ionicons
+                      name="water"
+                      size={60}
+                      color={isActive ? '#FF3B30' : '#F2F2F7'}
+                      style={{ position: 'absolute', top: -5 }}
+                    />
+                    <Text style={{
+                      zIndex: 1,
+                      fontSize: 14,
+                      fontWeight: '800',
+                      color: isActive ? '#fff' : '#8E8E93',
+                      marginTop: 8 // Adjust text position to center in the "fat" part of drop
+                    }}>
+                      {bg}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Radius Filter */}
+        <View style={{ marginBottom: 20, paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#666', marginBottom: 8, marginLeft: 4 }}>
+            Search Radius: {searchRadius} km
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
+            {radiusOptions.map(radius => (
+              <TouchableOpacity
+                key={radius}
+                onPress={() => setSearchRadius(radius)}
+                style={{
+                  paddingVertical: 6,
+                  paddingHorizontal: 16,
+                  borderRadius: 20,
+                  backgroundColor: searchRadius === radius ? '#FF3B30' : '#F2F2F7',
+                  marginRight: 8,
+                  borderWidth: 1,
+                  borderColor: searchRadius === radius ? '#FF3B30' : '#E5E5EA',
+                }}
+              >
+                <Text style={{
+                  color: searchRadius === radius ? '#FFFFFF' : '#666666',
+                  fontWeight: searchRadius === radius ? '600' : '500',
+                  fontSize: 14
+                }}>
+                  {radius} km
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#666' }}>Recent Requests</Text>
           <Button
             title="Refresh"
             onPress={onRefresh}
-            variant="secondary"
-            style={styles.refreshButton}
+            variant="text"
+            style={{ padding: 0, height: 'auto', backgroundColor: 'transparent' }}
+            textStyle={{ color: '#007AFF', fontSize: 14 }}
           />
         </View>
         {requestsLoading ? (
@@ -407,9 +571,9 @@ function DonorDashboardScreen({ navigation, route }) {
           style={{ flex: 1, marginLeft: 8 }}
         />
       </View>
-      
+
       {/* ECG Pulse Overlay Loader */}
-      <ECGPulseOverlay 
+      <ECGPulseOverlay
         visible={requestsLoading}
         text="Loading nearby requests..."
       />
@@ -461,11 +625,11 @@ function RequesterDashboardScreen({ navigation, route }) {
     setLoading(true);
     try {
       const coords = await locationService.getCurrentLocation();
-      
+
       // Check if we have valid coordinates
       if (!locationService.isValidLocation(coords)) {
         Alert.alert(
-          'Location Required', 
+          'Location Required',
           'Please enable location access to create a blood request. This helps donors find your request.',
           [
             { text: 'Cancel', style: 'cancel' },
@@ -474,7 +638,7 @@ function RequesterDashboardScreen({ navigation, route }) {
         );
         return;
       }
-      
+
       const requestData = {
         ...createForm,
         longitude: coords.longitude,
@@ -483,7 +647,7 @@ function RequesterDashboardScreen({ navigation, route }) {
       };
 
       await requestService.createRequest(requestData);
-      
+
       Alert.alert('Success', 'Blood request created successfully! Nearby donors will be notified.');
       setShowCreateModal(false);
       setCreateForm({
@@ -557,10 +721,10 @@ function RequesterDashboardScreen({ navigation, route }) {
             <Text style={styles.urgencyText}>{item.urgency}</Text>
           </View>
         </View>
-        
+
         <Text style={styles.hospitalName}>{item.hospitalName}</Text>
         <Text style={styles.hospitalAddress}>{item.hospitalAddress}</Text>
-        
+
         <View style={styles.requestDetails}>
           <Text style={styles.detailText}>Units: {item.units}</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
@@ -568,7 +732,7 @@ function RequesterDashboardScreen({ navigation, route }) {
           </View>
           <Text style={styles.detailText}>Created: {new Date(item.createdAt).toLocaleDateString()}</Text>
         </View>
-        
+
         {item.acceptedDonors && item.acceptedDonors.length > 0 && (
           <View style={styles.acceptedDonors}>
             <Text style={styles.acceptedTitle}>
@@ -596,7 +760,7 @@ function RequesterDashboardScreen({ navigation, route }) {
             ))}
           </View>
         )}
-        
+
         {item.description && (
           <Text style={styles.description}>{item.description}</Text>
         )}
@@ -800,15 +964,15 @@ function NotificationsScreen({ navigation, route }) {
   ]);
 
   const markAsRead = (id) => {
-    setNotifications(prev => 
-      prev.map(notif => 
+    setNotifications(prev =>
+      prev.map(notif =>
         notif.id === id ? { ...notif, read: true } : notif
       )
     );
   };
 
   const renderNotification = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[styles.notificationItem, !item.read && styles.unreadNotification]}
       onPress={() => markAsRead(item.id)}
     >
@@ -847,9 +1011,9 @@ function NotificationsScreen({ navigation, route }) {
           variant="secondary"
         />
       </View>
-      
+
       {/* ECG Pulse Overlay Loader */}
-      <ECGPulseOverlay 
+      <ECGPulseOverlay
         visible={requestsLoading}
         text="Loading your requests..."
       />
@@ -859,15 +1023,33 @@ function NotificationsScreen({ navigation, route }) {
 
 function MainApp() {
   const navigationRef = useNavigationContainerRef();
-  const { user } = useUser();
+  const { isDark, colors } = useTheme();
+  const { user } = useUser(); // Add user from context
+  const [initialRoute, setInitialRoute] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user has seen welcome screen
+    const checkWelcomeStatus = async () => {
+      try {
+        const hasSeen = await welcomeService.hasSeenWelcome();
+        setInitialRoute(hasSeen ? 'Login' : 'Intro');
+      } catch (error) {
+        console.error('Failed to check welcome status:', error);
+        setInitialRoute('Intro'); // Fallback to showing intro
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkWelcomeStatus();
+
     // Show Expo Go warning
     notificationService.showExpoGoWarning();
-    
+
     // Initialize notifications
     notificationService.initialize();
-    
+
     // Set up notification listeners
     const subscription = notificationService.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
@@ -878,9 +1060,29 @@ function MainApp() {
     return () => subscription?.remove();
   }, [user]);
 
+  const navigationTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background,
+      text: colors.text,
+      card: colors.card,
+      border: colors.inputBorder,
+    },
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <HeartbeatLoader size={80} />
+        <Text style={{ marginTop: 20, fontSize: 16, color: colors.subtext }}>Loading LifePulse...</Text>
+      </View>
+    );
+  }
+
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator initialRouteName="Intro" screenOptions={{ headerShown: false }}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
@@ -901,7 +1103,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <UserProvider>
-        <MainApp />
+        <ThemeProvider>
+          <MainApp />
+        </ThemeProvider>
       </UserProvider>
     </ErrorBoundary>
   );

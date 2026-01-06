@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import FluidBackground from '../../components/common/FluidBackground';
 import ECGPulseOverlay from '../../components/common/ECGPulseOverlay';
 import authService from '../../services/authService';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS, SIZES, SHADOWS } from '../../constants/theme';
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -31,7 +33,7 @@ const RegisterScreen = ({ navigation }) => {
       const phoneNumber = formData.identifier.trim();
       // Remove any non-digit characters for validation
       const digitsOnly = phoneNumber.replace(/\D/g, '');
-      
+
       // Check if it's a valid phone number (should be 10-15 digits)
       if (digitsOnly.length < 10 || digitsOnly.length > 15) {
         setError('Please enter a valid phone number (10-15 digits)');
@@ -44,9 +46,9 @@ const RegisterScreen = ({ navigation }) => {
       const identifier = formData.identifier.trim();
       const isEmail = identifier.includes('@');
       const cleanedIdentifier = isEmail ? identifier : identifier.replace(/\D/g, '');
-      
+
       console.log('🔍 Starting registration for:', cleanedIdentifier);
-      
+
       // Step 1: Create user account first (backend requires user to exist before verification)
       const userRegistrationData = {
         name: formData.name.trim(),
@@ -75,14 +77,14 @@ const RegisterScreen = ({ navigation }) => {
       console.log('🔍 Creating user account:');
       console.log('📧 Is email registration?', isEmail);
       console.log('📋 Registration data:', JSON.stringify(userRegistrationData, null, 2));
-      
+
       try {
         await authService.register(userRegistrationData);
         console.log('✅ User account created successfully');
       } catch (registerError) {
-        if (registerError.response?.status === 409 || 
-            (registerError.response?.status === 400 && 
-             registerError.response?.data?.error?.includes('already exists'))) {
+        if (registerError.response?.status === 409 ||
+          (registerError.response?.status === 400 &&
+            registerError.response?.data?.error?.includes('already exists'))) {
           // User already exists
           Alert.alert(
             'Account Already Exists',
@@ -97,14 +99,14 @@ const RegisterScreen = ({ navigation }) => {
         // Re-throw other registration errors
         throw registerError;
       }
-      
+
       // Step 2: Send verification code to the created user
       const method = isEmail ? 'EMAIL' : 'SMS';
       await authService.sendVerification(cleanedIdentifier, 'LOGIN', method, formData.name.trim());
-      
+
       const methodText = method === 'EMAIL' ? 'email' : 'WhatsApp/SMS';
       const destinationText = isEmail ? identifier : `WhatsApp number ${cleanedIdentifier}`;
-      
+
       Alert.alert(
         'Verification Code Sent!',
         `Your account has been created successfully! A 6-digit verification code has been sent to your ${methodText} (${destinationText}) to complete the setup.`,
@@ -122,7 +124,7 @@ const RegisterScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error('Registration error:', error);
-      
+
       // Handle rate limiting with user-friendly message
       if (error.response?.status === 429) {
         const retryAfter = error.response?.data?.retryAfter || '15 minutes';
@@ -132,9 +134,9 @@ const RegisterScreen = ({ navigation }) => {
           [{ text: 'OK', style: 'default' }]
         );
         setError('');
-      } else if (error.response?.status === 409 || 
-                 (error.response?.status === 400 && 
-                  error.response?.data?.error?.includes('already exists'))) {
+      } else if (error.response?.status === 409 ||
+        (error.response?.status === 400 &&
+          error.response?.data?.error?.includes('already exists'))) {
         // User already exists
         Alert.alert(
           'Account Already Exists',
@@ -158,48 +160,32 @@ const RegisterScreen = ({ navigation }) => {
     setError('');
   };
 
-  const getIdentifierLabel = () => {
-    return formData.identifier.includes('@') ? 'Email Address' : 'Phone Number';
-  };
-
-  const getIdentifierPlaceholder = () => {
-    return formData.identifier.includes('@') ? 'Enter your email address' : 'Enter your phone number';
-  };
-
-  const getKeyboardType = () => {
-    return formData.identifier.includes('@') ? 'email-address' : 'phone-pad';
-  };
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <FluidBackground>
       <View style={styles.header}>
-        <Ionicons name="person-add" size={48} color="#FF3B30" style={{ marginBottom: 8 }} />
         <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join LifePulse - Quick signup with OTP verification</Text>
+        <Text style={styles.subtitle}>Join LifePulse Community</Text>
       </View>
-      <View style={styles.form}>
-        <View style={styles.inputRow}>
-          <Ionicons name="person" size={20} color="#8E8E93" style={styles.inputIcon} />
-          <Input
-            label="Full Name"
-            value={formData.name}
-            onChangeText={(value) => updateFormData('name', value)}
-            placeholder="Enter your full name"
-            style={styles.input}
-          />
-        </View>
-        <View style={styles.inputRow}>
-          <Ionicons name="call" size={20} color="#8E8E93" style={styles.inputIcon} />
-          <Input
-            label="Phone Number or Email"
-            value={formData.identifier}
-            onChangeText={(value) => updateFormData('identifier', value)}
-            placeholder="Enter phone (for WhatsApp) or email"
-            keyboardType="default"
-            autoCapitalize="none"
-            style={styles.input}
-          />
-        </View>
+
+      <View style={styles.formCard}>
+        <Input
+          label="Full Name"
+          value={formData.name}
+          onChangeText={(value) => updateFormData('name', value)}
+          placeholder="Enter your full name"
+          icon="person"
+        />
+
+        <Input
+          label="Phone Number or Email"
+          value={formData.identifier}
+          onChangeText={(value) => updateFormData('identifier', value)}
+          placeholder="Enter phone (for WhatsApp) or email"
+          keyboardType="default"
+          autoCapitalize="none"
+          icon="call"
+        />
+
         <View style={styles.pickerContainer}>
           <Text style={styles.label}>Role</Text>
           <View style={styles.pickerWrapper}>
@@ -209,11 +195,12 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.picker}
               itemStyle={styles.pickerItem}
             >
-              <Picker.Item label="Blood Donor" value="DONOR" color="#1C1C1E" />
-              <Picker.Item label="Blood Requester" value="REQUESTER" color="#1C1C1E" />
+              <Picker.Item label="Blood Donor" value="DONOR" color={COLORS.text} />
+              <Picker.Item label="Blood Requester" value="REQUESTER" color={COLORS.text} />
             </Picker>
           </View>
         </View>
+
         <View style={styles.pickerContainer}>
           <Text style={styles.label}>Blood Group</Text>
           <View style={styles.pickerWrapper}>
@@ -224,144 +211,142 @@ const RegisterScreen = ({ navigation }) => {
               itemStyle={styles.pickerItem}
             >
               {bloodGroups.map(group => (
-                <Picker.Item key={group} label={group} value={group} color="#1C1C1E" />
+                <Picker.Item key={group} label={group} value={group} color={COLORS.text} />
               ))}
             </Picker>
           </View>
         </View>
+
         {error ? (
-          <Text style={styles.error}>{error}</Text>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+            <Text style={styles.error}>{error}</Text>
+          </View>
         ) : null}
-        
+
         {loading && (
           <View style={styles.loaderContainer}>
             <Text style={styles.loadingText}>Creating your account...</Text>
           </View>
         )}
-        
-        <TouchableOpacity
-          style={[styles.registerButton, loading && styles.buttonHidden]}
-          onPress={handleSendVerification}
-          disabled={loading}
-        >
-          <Text style={styles.registerButtonText}>Send Verification Code</Text>
-        </TouchableOpacity>
+
         <Button
-          title="Already have an account? Login"
-          onPress={() => navigation.navigate('Login')}
-          variant="secondary"
+          title="Send Verification Code"
+          onPress={handleSendVerification}
+          loading={loading}
+          style={styles.actionButton}
         />
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.linkText}>Login</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      
+
       {/* ECG Pulse Overlay Loader */}
-      <ECGPulseOverlay 
+      <ECGPulseOverlay
         visible={loading}
         text="Creating your account..."
       />
-    </ScrollView>
+    </FluidBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  content: {
-    flexGrow: 1,
-    padding: 20,
-  },
   header: {
     alignItems: 'center',
-    marginTop: 40,
     marginBottom: 30,
+    marginTop: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
+    fontSize: 32,
+    fontWeight: '800',
+    color: COLORS.primary[0],
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
+    fontSize: 18,
+    color: COLORS.textSecondary,
     textAlign: 'center',
+    fontWeight: '600',
   },
-  form: {
-    flex: 1,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
+  formCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 30,
+    padding: 24,
+    ...SHADOWS.medium,
   },
   pickerContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1C1C1E',
+    color: COLORS.text,
     marginBottom: 8,
+    marginLeft: 4,
   },
   pickerWrapper: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
-    backgroundColor: '#F8F9FA',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: 20,
+    backgroundColor: COLORS.gray,
+    overflow: 'hidden',
   },
   picker: {
-    height: 50,
-    color: '#1C1C1E',
+    height: 55,
+    color: COLORS.text,
   },
   pickerItem: {
-    color: '#1C1C1E',
     fontSize: 16,
+    color: COLORS.text,
   },
-  registerButton: {
-    backgroundColor: '#FF3B30',
-    borderRadius: 8,
-    paddingVertical: 14,
+  actionButton: {
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  errorContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 8,
+    justifyContent: 'center',
+    marginBottom: 16,
+    backgroundColor: '#FFF0F0',
+    padding: 10,
+    borderRadius: 12,
   },
-  registerButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
+  error: {
+    color: COLORS.error,
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
   },
   loaderContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 20,
   },
-  buttonHidden: {
-    opacity: 0,
-    height: 0,
-    marginTop: 0,
-    marginBottom: 0,
-  },
-  error: {
-    color: 'red',
-    marginTop: 8,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
   loadingText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  footerText: {
+    color: COLORS.textSecondary,
+    fontSize: 15,
+  },
+  linkText: {
+    color: COLORS.primary[0],
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

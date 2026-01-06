@@ -2,28 +2,20 @@ import axios from 'axios';
 
 class ApiService {
   constructor() {
-    // Get the correct base URL based on environment
-    const getBaseURL = () => {
-      // Check if we're in production
-      if (process.env.REACT_APP_ENV === 'production') {
-        // Use production URL
-        return process.env.REACT_APP_API_URL || 'https://lpbackend-w3g7.onrender.com';
-      } else {
-        // Use development URL
-        return process.env.REACT_APP_API_URL || 'http://192.168.1.6:5000';
-      }
-    };
+    // Use the same configuration as api.js
+    const isDevelopment = true; // Use local server
+    const PRODUCTION_URL = 'https://lpbackend-w3g7.onrender.com';
+    const LOCAL_URL = 'http://10.0.2.2:5000'; // Android emulator special IP for host machine
 
-    this.baseURL = getBaseURL();
-    this.isProduction = process.env.REACT_APP_ENV === 'production';
-    
+    this.baseURL = isDevelopment ? LOCAL_URL : PRODUCTION_URL;
+    this.isProduction = !isDevelopment;
+
     console.log('🔧 API Service initialized with:', {
       baseURL: this.baseURL,
       isProduction: this.isProduction,
-      env: process.env.REACT_APP_ENV,
-      apiUrl: process.env.REACT_APP_API_URL
+      isDevelopment: !this.isProduction
     });
-    
+
     this.instance = axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -31,7 +23,7 @@ class ApiService {
       },
       timeout: 10000, // 10 second timeout
     });
-    
+
     // Add interceptors for logging (only in development)
     this.setupInterceptors();
   }
@@ -69,12 +61,23 @@ class ApiService {
       },
       (error) => {
         // Always log errors, even in production
-        console.error('❌ API Response Error:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-          url: error.config?.url
-        });
+        // Use console.warn for client errors (4xx) to avoid RedBox in RN
+        if (error.response?.status >= 400 && error.response?.status < 500) {
+          console.warn('⚠️ API Client Error:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message,
+            url: error.config?.url
+          });
+        } else {
+          // Log other errors as errors
+          console.error('❌ API Response Error:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message,
+            url: error.config?.url
+          });
+        }
         return Promise.reject(error);
       }
     );
