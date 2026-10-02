@@ -1,0 +1,11 @@
+{
+  "name": "LifePulse - Blood Donation & Emergency Network",
+  "description": "Connect urgent blood recipients with verified nearby donors, track blood drives, find compatible matches, and save lives in real time.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
+
